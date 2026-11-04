@@ -6,6 +6,8 @@ Działająca aplikacja Windows w Pythonie i PySide6, z eksportem FFmpeg. Wdrożo
 
 Publiczne wydanie zawiera kod źródłowy i instrukcję budowania instalatora Windows. Do pracy z filmem zainstaluj FFmpeg i udostępnij ffmpeg oraz ffprobe w PATH.
 
+Instalator Online dla Windows x64 wymaga Pythona 3.12. Przy pierwszym uruchomieniu pobiera zależności z PyPI do środowiska użytkownika. Kolejne uruchomienia korzystają z zapisanych pakietów. [Wydanie 0.2.1](https://github.com/zetmar-collab/subtitle-studio/releases/tag/v0.2.1)
+
 Kod źródłowy (Python 3.12, Windows x64):
 
 ```powershell

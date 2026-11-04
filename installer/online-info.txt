@@ -1,0 +1,7 @@
+Subtitle Studio 0.2.1
+
+Wymagania: 64-bitowy Python 3.12 oraz FFmpeg i ffprobe dostępne w PATH.
+Przy pierwszym uruchomieniu aplikacja pobiera zależności z PyPI do prywatnego środowiska Pythona. Wymaga to internetu. Kolejne uruchomienia korzystają z lokalnego środowiska.
+
+Requirements: 64-bit Python 3.12 and FFmpeg and ffprobe on PATH.
+The first launch downloads dependencies from PyPI into a private Python environment. Internet access is required for this step. Subsequent launches use the local environment.
