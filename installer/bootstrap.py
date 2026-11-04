@@ -16,7 +16,8 @@ def main():
         raise SystemExit('Subtitle Studio requires 64-bit Python 3.12.')
 
     source = Path(__file__).resolve().parent / 'app'
-    runtime = Path(os.environ['LOCALAPPDATA']) / 'SubtitleStudio' / 'online-runtime-0.2.1'
+    # Qt wheels include deeply nested paths on Windows.
+    runtime = Path(os.environ['LOCALAPPDATA']) / 'SS021'
     python = runtime / 'Scripts' / 'python.exe'
     ready = runtime / 'requirements-installed.txt'
     requirements = source / 'requirements.txt'

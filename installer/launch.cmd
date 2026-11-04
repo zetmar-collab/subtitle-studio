@@ -6,7 +6,7 @@ if errorlevel 1 (
     py -3.12 "%~dp0bootstrap.py"
 )
 if errorlevel 1 (
-    echo Subtitle Studio requires 64-bit Python 3.12. See https://www.python.org/downloads/
+    echo Subtitle Studio could not start. Check the error above and make sure Python 3.12 x64 is installed.
     pause
     exit /b 1
 )
