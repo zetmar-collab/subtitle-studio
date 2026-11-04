@@ -1,0 +1,59 @@
+[
+  {
+    "name": "Klasyczne / Classic",
+    "style": {}
+  },
+  {
+    "name": "Filmowe / Cinema",
+    "style": {
+      "bold": false,
+      "size": 42,
+      "stroke": 1,
+      "y": 91
+    }
+  },
+  {
+    "name": "Ciemne tło / Dark box",
+    "style": {
+      "background": "#b8000000",
+      "stroke": 0
+    }
+  },
+  {
+    "name": "Social media",
+    "style": {
+      "size": 76,
+      "y": 50,
+      "width": 78
+    }
+  },
+  {
+    "name": "Aktywne słowo / Active word",
+    "style": {
+      "effect": "highlight",
+      "active_color": "#ffdc55",
+      "size": 64
+    }
+  },
+  {
+    "name": "Maszyna / Typewriter",
+    "style": {
+      "effect": "typewriter",
+      "font": "Consolas"
+    }
+  },
+  {
+    "name": "Wjazd z lewej / Slide left",
+    "style": {
+      "effect": "left",
+      "animation_ms": 500
+    }
+  },
+  {
+    "name": "Wjazd z prawej / Slide right",
+    "style": {
+      "effect": "right",
+      "animation_ms": 500
+    }
+  }
+]

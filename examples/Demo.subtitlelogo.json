@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "video": "Film demonstracyjny.mp4",
+  "tracks": [
+    {
+      "name": "Polskie napisy",
+      "visible": true,
+      "segments": [
+        {
+          "start": 500,
+          "end": 3000,
+          "text": "Twój film. Twoje napisy.",
+          "language": "pl",
+          "words": [
+            {
+              "text": "Twój",
+              "start": 500,
+              "end": 1000
+            },
+            {
+              "text": "film.",
+              "start": 1000,
+              "end": 1600
+            },
+            {
+              "text": "Twoje",
+              "start": 1600,
+              "end": 2200
+            },
+            {
+              "text": "napisy.",
+              "start": 2200,
+              "end": 3000
+            }
+          ],
+          "timed": true
+        },
+        {
+          "start": 3500,
+          "end": 7500,
+          "text": "Zażółć gęślą jaźń — działamy lokalnie.",
+          "language": "pl",
+          "words": [],
+          "timed": true
+        }
+      ],
+      "style": {
+        "font": "Arial",
+        "size": 64,
+        "bold": true,
+        "color": "#ffffff",
+        "outline": "#111111",
+        "stroke": 3,
+        "background": "#00000000",
+        "x": 50,
+        "y": 88,
+        "width": 88,
+        "effect": "highlight",
+        "animation_ms": 400,
+        "active_color": "#ffdc55"
+      },
+      "source": ""
+    }
+  ],
+  "logos": [
+    {
+      "path": "Logo przezroczyste.png",
+      "x": 88,
+      "y": 12,
+      "width": 18,
+      "opacity": 75,
+      "start": 0,
+      "end": 2147483647,
+      "visible": true
+    }
+  ],
+  "language": "pl",
+  "theme": "dark",
+  "quality": {
+    "cps": 22,
+    "line": 42,
+    "minimum": 600
+  }
+}
