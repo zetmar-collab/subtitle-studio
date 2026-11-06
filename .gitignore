@@ -11,3 +11,6 @@ docs/package-smoke.json
 docs/*.png.json
 examples/Przykładowy eksport.mp4
 specyfikacja_edytor_napisow_logo_video_GPT-Sol-6.1.md
+Concat-main.zip
+graphify-out/
+.venv/

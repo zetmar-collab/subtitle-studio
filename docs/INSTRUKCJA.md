@@ -1,4 +1,20 @@
+## Aktualizacja 0.6.0
+
+Zrealizowane poprawki i nowe funkcje opisuje [NOWOSCI_0.6.md](NOWOSCI_0.6.md), a lokalną korektę AI [OLLAMA.md](OLLAMA.md). Poniższe opisy wcześniejszych wersji pozostawiono jako historię zmian.
+
+## Transkrypcja i edycja tekstu — 0.5.0
+
+Moduł Szept jest dostępny w drugiej karcie wspólnego okna. [Przepływ pracy, modele i przekazywanie napisów](INTEGRACJA_SZEPT.md).
+
 # Instrukcja użytkownika
+
+## Film ze zdjęcia lub klipu i osobnego dźwięku
+
+Kliknij „Obraz + audio” na górnym pasku lub Ctrl+Shift+V. Wskaż zdjęcie PNG/JPG/WebP/BMP albo film, a następnie osobny plik audio. Ustaw format 16:9, 9:16, 1:1, 4:5, 4:3 lub własne parzyste wymiary. „Cały obraz z pasami” zachowuje cały obraz. „Wypełnij kadr” przycina jego środkową część. Oba warianty zachowują proporcje źródła. Podgląd pokazuje zdjęcie lub pierwszą klatkę w wybranym kadrze.
+
+Zdjęcie pozostaje widoczne przez całą długość audio. Dla wideo wybierz powtarzanie do końca dźwięku, zatrzymanie ostatniej klatki albo długość krótszego pliku. Dźwięk wyniku pochodzi z pierwszej ścieżki wybranego pliku audio. Ustaw FPS oraz CRF i kliknij „Utwórz i zapisz MP4”. Po zakończeniu możesz otworzyć wynik w edytorze i dodać napisy oraz logo. Przycisk anulowania zatrzymuje pracę i zachowuje poprzedni plik docelowy.
+
+Funkcje montażowe wersji 0.3.0 obejmują łączenie filmów, zoom i edycję osi, zakres I–O oraz domykanie czasu napisów. Szczegółową obsługę i skróty opisuje [instrukcja rozszerzeń](CONCAT.md).
 
 ## Film i napisy
 

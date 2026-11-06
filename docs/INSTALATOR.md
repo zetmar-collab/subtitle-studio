@@ -1,6 +1,8 @@
 # Instalator Windows
 
-Wynik: `dist/SubtitleStudio-Setup-0.2.1-x64.exe`. Zachowano identyfikator produktu z wersji 0.1.0, aby instalator rozpoznawał aktualizację istniejącej instalacji.
+Wynik: `dist/SubtitleStudio-Setup-0.6.1-x64.exe`. Zachowano identyfikator produktu z wersji 0.1.0, aby instalator rozpoznawał aktualizację istniejącej instalacji.
+
+Wariant Online powstaje przez `python scripts/build_online_setup.py`. Skrypt zbiera bieżące pliki widoczne dla Git i kompiluje `SubtitleStudio-Setup-0.6.1-Online-x64.exe`. Wymaga lokalnego kompilatora Inno Setup albo argumentu `--compiler`. Pierwsze uruchomienie korzysta z Pythona 3.12 i pobiera pakiety z PyPI. Narzędzia FFmpeg i ffprobe są odczytywane z PATH.
 
 - Instalacja dla bieżącego użytkownika, bez podnoszenia uprawnień.
 - Domyślny katalog: `%LOCALAPPDATA%/Programs/SubtitleStudio`.

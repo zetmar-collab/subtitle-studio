@@ -71,8 +71,9 @@ def stretch(segments, a, b, target_a, target_b):
 
 
 def warnings(segments, duration, cps=22, line=42, minimum=600):
+    overlaps = overlap_flags(segments)
     out = []
-    for s in segments:
+    for index, s in enumerate(segments):
         errors = []
         if not s.timed:
             errors.append('Brak czasów / Untimed')
@@ -86,7 +87,21 @@ def warnings(segments, duration, cps=22, line=42, minimum=600):
             errors.append('Długi wiersz / Long line')
         if len(s.text)/max(.001, (s.end-s.start)/1000) > cps:
             errors.append('Za szybko / Too fast')
-        if any(o is not s and o.start < s.end and o.end > s.start for o in segments):
+        if overlaps[index]:
             errors.append('Nakładanie / Overlap')
         out.append('; '.join(errors))
     return out
+
+
+def overlap_flags(segments):
+    flags = [False] * len(segments)
+    maximum, owner = float('-inf'), None
+    for index in sorted(range(len(segments)), key=lambda i: segments[i].start):
+        segment = segments[index]
+        if segment.end <= segment.start:
+            continue
+        if segment.start < maximum:
+            flags[index] = flags[owner] = True
+        if segment.end > maximum:
+            maximum, owner = segment.end, index
+    return flags

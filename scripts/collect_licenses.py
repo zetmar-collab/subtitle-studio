@@ -1,12 +1,24 @@
 from importlib.metadata import distribution
+from packaging.requirements import Requirement
 from pathlib import Path
 import shutil
 import sys
 
 target = Path(__file__).resolve().parents[1]/'dist/SubtitleStudio/licenses'
 target.mkdir(parents=True,exist_ok=True)
-for name in ('PySide6_Essentials','PySide6_Addons','shiboken6','pysubs2','charset-normalizer','spylls'):
+pending = [Requirement(line).name for line in (Path(__file__).resolve().parents[1]/'requirements.txt').read_text().splitlines() if line.strip()]
+seen = set()
+while pending:
+    name = pending.pop()
+    key = name.lower().replace('_','-')
+    if key in seen:
+        continue
+    seen.add(key)
     dist = distribution(name)
+    for dependency in dist.requires or []:
+        requirement = Requirement(dependency)
+        if requirement.marker is None or requirement.marker.evaluate({'extra':''}):
+            pending.append(requirement.name)
     for file in dist.files or []:
         if '.dist-info/' in str(file).replace('\\','/') and any(word in Path(str(file)).name.lower() for word in ('license','copying','copyright')):
             path = Path(dist.locate_file(file))

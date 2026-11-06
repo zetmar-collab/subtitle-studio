@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "frozen": true,
+  "cases": [
+    {
+      "name": "pl",
+      "language": "pl",
+      "segments": 5,
+      "words": 32,
+      "text": "Dzień dobry. To jest krótkie nagranie w języku polskim. Dzisiaj sprawdzamy program do zapisywania mowy. Wszystkie pliki zostają na moim komputerze. Po zakończeniu mogę poprawić tekst i zapisać napisy. Dziękuję za uwagę.",
+      "duration": 17.426621,
+      "seconds": 1.78,
+      "offline_socket_block": true
+    },
+    {
+      "name": "en",
+      "language": "en",
+      "segments": 7,
+      "words": 45,
+      "text": "Hello. This is a short recording in the English language. Today we are testing a program that turns speech into text. All files stay on my computer. When the recording is ready, I can edit the text and save the subtitles. Thank you for listening.",
+      "duration": 18.291247,
+      "seconds": 2.06,
+      "offline_socket_block": true
+    },
+    {
+      "name": "silence",
+      "language": "pl",
+      "segments": 0,
+      "words": 0,
+      "text": "",
+      "duration": 8.0,
+      "seconds": 1.03,
+      "offline_socket_block": true
+    }
+  ]
+}

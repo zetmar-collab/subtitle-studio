@@ -61,6 +61,45 @@ def test_animation_changes_then_reaches_static_frame(app, effect):
     assert pixels(compose(frame, project, 900)) == static
 
 
+@pytest.mark.parametrize('effect',['typewriter','words'])
+def test_reveal_keeps_text_positions_and_background_fixed(app,effect):
+    project=Project();track=project.tracks[0]
+    track.segments=[Segment(0,3000,'Pierwsze drugie trzecie czwarte piąte')]
+    track.style.effect=effect;track.style.animation_ms=2000;track.style.width=38
+    track.style.size=80;track.style.y=50;track.style.background='#142134';track.style.stroke=0
+    frame=QImage(640,360,QImage.Format.Format_RGB888);frame.fill(QColor('black'))
+    early=compose(frame,project,550);late=compose(frame,project,2500)
+    white=QColor(track.style.color).rgb();black=QColor('black').rgb()
+    # Revealed glyphs keep exactly the same pixels; the full box never jumps.
+    early_ink={(x,y) for y in range(360) for x in range(640) if early.pixel(x,y)==white}
+    assert early_ink and all(late.pixel(x,y)==white for x,y in early_ink)
+    bounds=lambda img:{(x,y) for y in range(360) for x in range(640) if img.pixel(x,y)!=black}
+    assert bounds(early)==bounds(late)
+
+
+def test_words_use_asr_starts_and_highlight_does_not_flash_in_pause(app):
+    project=Project();track=project.tracks[0]
+    track.segments=[Segment(0,3000,'raz dwa',words=[dict(text='raz',start=100,end=600),dict(text='dwa',start=2000,end=2800)])]
+    track.style.effect='words';track.style.size=90
+    frame=QImage(640,360,QImage.Format.Format_RGB888);frame.fill(QColor('black'))
+    assert pixels(compose(frame,project,200))==pixels(compose(frame,project,1500))
+    assert pixels(compose(frame,project,2100))!=pixels(compose(frame,project,1500))
+    track.style.effect='highlight'
+    assert pixels(compose(frame,project,200))==pixels(compose(frame,project,1500))
+    assert pixels(compose(frame,project,2100))!=pixels(compose(frame,project,1500))
+
+
+def test_stale_word_text_uses_equal_intervals_and_graphemes_stay_whole(app):
+    from core.compositor.render import aligned_words,graphemes,text_lines
+    from PySide6.QtGui import QFont,QFontMetricsF
+    assert graphemes('A\U0001f469\u200d\U0001f4bb\U0001f1f5\U0001f1f1e\u0301')==['A','\U0001f469\u200d\U0001f4bb','\U0001f1f5\U0001f1f1','e\u0301']
+    segment=Segment(0,2000,'nowe słowa',words=[dict(text='stare',start=0,end=100),dict(text='słowa',start=200,end=300)])
+    assert not aligned_words(segment,segment.text)
+    font=QFont('Arial');font.setPixelSize(36);fm=QFontMetricsF(font)
+    lines=text_lines('Bardzodługiesłowobezspacji',fm,120)
+    assert len(lines)>1 and all(fm.horizontalAdvance(line)<=120 for line,_ in lines)
+
+
 @pytest.fixture
 def video(tmp_path):
     path = tmp_path/'Źródło ze spacją.mp4'
@@ -69,7 +108,7 @@ def video(tmp_path):
     return path
 
 
-@pytest.mark.parametrize('effect',['static','typewriter','left','right','highlight'])
+@pytest.mark.parametrize('effect',['static','fade','left','right','up','typewriter','words','highlight','pop'])
 def test_real_export_audio_overlay_and_frame_match(app,video,tmp_path,effect):
     p = Project(video=str(video)); p.tracks[0].style.effect = effect
     p.tracks[0].segments = [Segment(250,1750,'Zażółć gęślą',words=[dict(start=250,end=1000),dict(start=1000,end=1750)])]
@@ -112,6 +151,23 @@ def test_portrait_fit_and_corrupt_input(app,video,tmp_path):
     corrupt = tmp_path/'bad.mp4'; corrupt.write_bytes(b'not a movie')
     with pytest.raises(ValueError):
         probe(corrupt)
+
+
+def test_export_range_keeps_original_subtitle_time_and_audio(app,video,tmp_path):
+    project = Project(video=str(video))
+    project.tracks[0].segments = [Segment(1000,1600,'Zakres filmu')]
+    output = tmp_path/'range.mp4'
+    render(project,output,dict(start=1,seconds=.5,fps=12,crf=10))
+    info = probe(output)
+    assert abs(info['duration']-500) < 150
+    assert sum(s['codec_type'] == 'audio' for s in info['streams']) == 1
+    raw = subprocess.run([binary('ffmpeg'),'-v','error','-ss','0.1','-i',str(output),'-frames:v','1',
+                          '-f','rawvideo','-pix_fmt','rgb24','pipe:1'],capture_output=True,check=True,creationflags=FLAGS).stdout
+    actual = QImage(raw,640,360,640*3,QImage.Format.Format_RGB888).copy()
+    frame = QImage(640,360,QImage.Format.Format_RGB888)
+    frame.fill(QColor('#263349'))
+    expected = compose(frame,project,1100)
+    assert sum(abs(a-b) for a,b in zip(pixels(expected),pixels(actual)))/len(raw) < 3
 
 
 @pytest.mark.parametrize('codec,suffix',[('libx265','mp4'),('libvpx-vp9','webm'),('libx264','mkv')])

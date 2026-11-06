@@ -1,15 +1,17 @@
-SUBTITLE STUDIO 0.2.1
+SUBTITLE STUDIO 0.6.1
 
 PL
 Instalator dodaje aplikację dla bieżącego użytkownika, bez wymagania konta administratora.
 Python nie jest potrzebny. Do analizy i eksportu filmów wymagane są ffmpeg.exe i ffprobe.exe dostępne w PATH lub w folderze aplikacji. Instalator nie pobiera ani nie dołącza tych narzędzi.
 
-Program pracuje lokalnie. Materiały demonstracyjne, instrukcja i informacje o licencjach zostaną zainstalowane razem z aplikacją. Rzeczywisty zakres funkcji opisuje docs/STATUS.md.
+Program łączy edytor filmu i lokalną transkrypcję Szept. Modele mowy nie są dołączone; można wskazać istniejący model lub pobrać go jawnie w aplikacji. Po przygotowaniu modelu transkrypcja pracuje lokalnie. Materiały demonstracyjne, instrukcja i informacje o licencjach zostaną zainstalowane razem z aplikacją. Rzeczywisty zakres funkcji opisuje docs/STATUS.md.
+Opcjonalna korekta AI wymaga oddzielnie uruchomionej Ollamy i pobranego lokalnego modelu.
 Deinstalator usuwa pliki programu; nie usuwa zapisanych projektów ani danych użytkownika.
 
 EN
 This installer installs the application for the current user without administrator privileges.
 Python is not required. Media analysis and export require ffmpeg.exe and ffprobe.exe on PATH or in the application folder. These tools are not downloaded or bundled by this installer.
 
-The application works locally. Demo files, instructions and third-party notices are included. See docs/STATUS.md for implemented features and limitations.
+The application combines video editing and local Szept transcription. Speech models are not bundled: select an existing model or explicitly download one in the app. Transcription runs locally once a model is available. Demo files, instructions and third-party notices are included. See docs/STATUS.md for implemented features and limitations.
+Optional AI correction requires a separately running Ollama server and a downloaded local model.
 Uninstalling removes program files and preserves saved projects and user data.

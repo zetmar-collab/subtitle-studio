@@ -1,4 +1,14 @@
+## Aktualizacja 0.6.0
+
+Zrealizowane poprawki i nowe funkcje opisuje [NOWOSCI_0.6.md](NOWOSCI_0.6.md), a lokalną korektę AI [OLLAMA.md](OLLAMA.md). Poniższe opisy wcześniejszych wersji pozostawiono jako historię zmian.
+
+## Aktualizacja 0.5.0
+
+Dodano ASR przez integrację Szept: lokalny Whisper, edycja tekstu, słowniki i przekazywanie napisów z czasami słów. Dalsze opisy ograniczeń ASR z wcześniejszych wersji mają charakter historyczny. Szczegóły: INTEGRACJA_SZEPT.md.
+
 # Rzeczywisty zakres implementacji
+
+Wersja 0.4.0 dodaje kreator filmu ze zdjęcia/wideo oraz osobnego audio. Gotowy wynik ma MP4 H.264/AAC, wybrane proporcje i rozmiar, z dopasowaniem lub centralnym kadrowaniem.
 
 ## Gotowe
 
@@ -6,6 +16,8 @@
 - Dodawanie, usuwanie, dzielenie i łączenie, szukanie/zamiana, przesuwanie oraz korekta dwoma punktami.
 - QC z konfigurowalnymi progami, fala audio, przewijanie po osi, głośność i pełny ekran.
 - Wspólny renderer QPainter: static, fade, lewo, prawo, góra, maszyna, słowo po słowie, ręczne highlight i pop.
+- Zoom i przewijanie osi, przesuwanie napisów i ich granic myszką, przyciąganie, duplikowanie, domykanie czasu napisów, zakres I–O i pętla.
+- Łączenie 2–40 filmów do MP4 H.264/AAC, z dopasowaniem obrazu i ujednoliceniem FPS/audio.
 - Osiem edytowalnych presetów, zapis i import własnego JSON, pozycja w siatce i przeciąganie warstw.
 - Wizualne palety kolorów napisów, obrysu, tła i aktywnego słowa: alfa, podgląd na filmie, anulowanie i undo; własna ikona aplikacji/EXE/instalatora.
 - Wiele grafik PNG/JPEG/WebP/BMP/GIF (pierwsza klatka), alfa, szerokość jako % filmu, krycie, przedziały widoczności, kolejność w grupie.
@@ -37,7 +49,7 @@ Podgląd i eksport korzystają ze stylu aplikacji, nie stylów pliku wejścioweg
 
 - Pełny zestaw testów akceptacyjnych specyfikacji **nie jest zamknięty**: brak testu w czystej maszynie Windows bez narzędzi programistycznych i bez zainstalowanego FFmpeg; brak podpisu cyfrowego.
 - Brak ASR, forced alignment, automatycznej synchronizacji do mowy, OCR i automatycznego wykrywania języka.
-- Brak ekstrakcji napisów osadzonych w kontenerze, spektrogramu, markerów pauz, zoomu osi oraz przeciągania granic segmentów na osi.
+- Brak ekstrakcji napisów osadzonych w kontenerze, spektrogramu i markerów pauz.
 - Pisownia pokazuje kolejne okna sugestii; nie ma podkreśleń w edytorze i menu kontekstowego ani gramatyki. Słowniki są ładowane na żądanie i zużywają dodatkową pamięć.
 - Styl wspólny dla ścieżki; brak wyjątków stylu pojedynczego segmentu/słowa, regulacji cienia, interlinii, odstępów, dowolnego wyrównania i pełnego zarządzania marginesami. Brak ostrzeżenia o wyjściu tekstu lub logo poza kadr.
 - Presety mają nazwy i bieżący podgląd, bez siatki animowanych miniatur.

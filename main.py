@@ -17,14 +17,33 @@ def report_unhandled(kind, value, trace):
 sys.excepthook = report_unhandled
 
 if __name__ == '__main__':
-    if '--render' in sys.argv:
+    import multiprocessing
+    multiprocessing.freeze_support()
+    if '--ollama-correct' in sys.argv:
+        from core.ai.ollama import main
+        main(sys.argv[2:])
+    elif '--slideshow' in sys.argv:
+        os.environ['QT_QPA_PLATFORM']='offscreen'
+        from core.media.slideshow import main
+        main(sys.argv[2:])
+    elif '--asr-test' in sys.argv:
+        from srtstudio.smoke import run_asr
+        sys.exit(run_asr(sys.argv[2], sys.argv[3]))
+    elif '--create-video' in sys.argv:
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+        from core.media.create_video import main
+        main(sys.argv[2:])
+    elif '--join' in sys.argv:
+        from core.media.join import main
+        main(sys.argv[2:])
+    elif '--render' in sys.argv:
         os.environ['QT_QPA_PLATFORM'] = 'offscreen'
         from core.export.worker import main
         main(sys.argv[2:])
     else:
         from PySide6.QtWidgets import QApplication
         from PySide6.QtGui import QIcon
-        from ui.window import Window
+        from ui.workspace import Workspace
         if os.name == 'nt':
             import ctypes
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('LocalTools.SubtitleStudio')
@@ -33,18 +52,31 @@ if __name__ == '__main__':
         initialize_fonts()
         app.setApplicationName('Subtitle Studio')
         app.setOrganizationName('LocalTools')
+        if '--integration-smoke' in sys.argv or '--smoke-test' in sys.argv:
+            app.setOrganizationName('LocalToolsSmoke')
+            from ui.window import Window
+            Window.recover = lambda self: None
         from pathlib import Path
         root = Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parent))
         app.setWindowIcon(QIcon(str(root/'assets/icon.ico')))
-        window = Window()
-        window.show()
+        workspace = Workspace()
+        window = workspace.editor
+        workspace.show()
+        if '--integration-smoke' in sys.argv:
+            from ui.integration_smoke import run
+            run(workspace, sys.argv[2:])
         if '--smoke-test' in sys.argv:
             from PySide6.QtCore import QTimer
             from pathlib import Path
             import json
             project, screenshot = sys.argv[2:4]
             window.open_project(project)
-            window.player.play()
+            def play_ready():
+                if window.project.video:
+                    window.player.play()
+                else:
+                    QTimer.singleShot(100,play_ready)
+            QTimer.singleShot(100,play_ready)
             QTimer.singleShot(2000,lambda: (window.player.pause(),window.player.setPosition(1700)))
             def capture():
                 window.player.pause()

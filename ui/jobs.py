@@ -1,6 +1,7 @@
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot, QCoreApplication
 import array
 import subprocess
+import threading
 from core.media.tools import binary, FLAGS
 
 
@@ -45,11 +46,24 @@ class Job(QRunnable):
             self.signals.error.emit(str(e))
 
 
-def waveform(path):
+def waveform(path, cancelled=lambda:False, start=0, duration=None):
     # Low sample rate and a bounded read prevent loading full-resolution PCM into memory.
-    p = subprocess.Popen([binary('ffmpeg'), '-v', 'error', '-nostdin', '-i', path, '-vn',
+    command=[binary('ffmpeg'),'-v','error','-nostdin']
+    if start:command+=['-ss',str(start)]
+    command+=['-i',str(path)]
+    if duration is not None:command+=['-t',str(duration)]
+    p = subprocess.Popen(command+['-vn',
                           '-af', 'aformat=channel_layouts=mono,aeval=abs(val(0))', '-ac', '1', '-ar', '100',
                           '-f', 's16le', 'pipe:1'], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, creationflags=FLAGS)
+    stopped=threading.Event()
+    def watch():
+        while not stopped.wait(.1):
+            if cancelled():
+                if p.poll() is None:
+                    try:p.kill()
+                    except OSError:pass
+                return
+    watcher=threading.Thread(target=watch,daemon=True);watcher.start()
     try:
         data = p.stdout.read(7_200_000)  # up to ten hours at 100 Hz
         if p.poll() is None:
@@ -61,6 +75,8 @@ def waveform(path):
         ceiling = max(peaks,default=0) or 1
         return [v/ceiling for v in peaks]
     finally:
+        stopped.set()
         if p.poll() is None:
             p.kill()
             p.wait()
+        watcher.join(timeout=1)

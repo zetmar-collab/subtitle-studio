@@ -20,14 +20,14 @@ def main():
     runtime = Path(os.environ['LOCALAPPDATA']) / 'SS021'
     python = runtime / 'Scripts' / 'python.exe'
     ready = runtime / 'requirements-installed.txt'
-    requirements = source / 'requirements.txt'
+    requirements = source / 'requirements-lock.txt'
     expected = requirements.read_bytes()
     if not python.is_file() or not ready.is_file() or ready.read_bytes() != expected:
         print('Preparing Subtitle Studio. The first launch downloads dependencies from PyPI.', flush=True)
         venv.create(runtime, with_pip=True)
         subprocess.run(
             [str(python), '-m', 'pip', '--isolated', 'install', '--index-url', 'https://pypi.org/simple',
-             '-r', str(requirements)],
+             '--require-hashes', '-r', str(requirements)],
             check=True,
         )
         ready.write_bytes(expected)

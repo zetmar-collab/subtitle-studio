@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "frozen": true,
+  "audio_probe": true,
+  "video_button_asr": true,
+  "asr_segments": 5,
+  "asr_words": 32,
+  "word_timing_transfer": true,
+  "project_roundtrip": true,
+  "reverse_transfer": true,
+  "native_spelling_worker": true,
+  "ollama_gui_worker": true,
+  "ollama_model": "Gemma4:e2b",
+  "ollama_captions_sent": 2
+}

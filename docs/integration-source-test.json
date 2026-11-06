@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "frozen": false,
+  "audio_probe": true,
+  "asr_segments": 5,
+  "asr_words": 32,
+  "word_timing_transfer": true,
+  "project_roundtrip": true,
+  "reverse_transfer": true,
+  "native_spelling_worker": true
+}

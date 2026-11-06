@@ -1,6 +1,6 @@
 # Zależności i redystrybucja
 
-Kod aplikacji: MIT, zobacz LICENSE. Licencja aplikacji nie obejmuje bibliotek i słowników osób trzecich.
+Połączona aplikacja: GPL-3.0-or-later, zobacz LICENSE. Pierwotny kod Subtitle Studio: MIT (docs/SUBTITLE_STUDIO_MIT.txt). Moduł srtstudio pochodzi z Szept (GPL-3.0-or-later), zobacz docs/INTEGRACJA_SZEPT.md. Licencja aplikacji nie obejmuje bibliotek i słowników osób trzecich.
 
 Ikona `assets/icon.svg` i jej pochodne PNG/ICO są własnymi zasobami tego projektu na licencji MIT. `assets/i18n/qtbase_pl.qm` pochodzi z tłumaczeń Qt dostarczonych z PySide6; obowiązują warunki Qt, wymienione poniżej i w dołączonych tekstach licencji.
 
@@ -19,8 +19,12 @@ Ikona `assets/icon.svg` i jej pochodne PNG/ICO są własnymi zasobami tego proje
 
 Qt Multimedia zawiera także własne dynamiczne biblioteki FFmpeg z dystrybucji Qt. Nie należy ich mylić z zewnętrznym ffmpeg.exe używanym przez eksporter. Licencje i informacje o elementach osób trzecich z wheel Qt kopiowane są przez skrypt `scripts/collect_licenses.py`. Paczka jest folderem onedir, aby umożliwić zastąpienie zgodnych bibliotek współdzielonych; cały kod i skrypt odbudowy aplikacji są udostępnione w tym repozytorium. Aplikacja nie zabrania reverse engineeringu potrzebnego do debugowania zmian w bibliotekach LGPL.
 
-Źródła Qt/PySide6 i instrukcje odbudowy: https://download.qt.io/official_releases/QtForPython/pyside6/ oraz https://code.qt.io/cgit/pyside/pyside-setup.git/ i https://code.qt.io/cgit/qt/qtmultimedia.git/ (tag v6.12.0). Licencje źródłowe Qt: https://doc.qt.io/qt-6/licenses-used-in-qt.html. Przed publiczną dystrybucją należy zapewnić dostęp do dokładnych źródeł wszystkich dostarczanych bibliotek i ich zależności, wraz z warunkami licencji i wymaganymi informacjami o budowie. Ta lokalna paczka nie jest zatwierdzonym wydaniem do publikacji.
+Źródła Qt/PySide6 i instrukcje odbudowy: https://download.qt.io/official_releases/QtForPython/pyside6/ oraz https://code.qt.io/cgit/pyside/pyside-setup.git/ i https://code.qt.io/cgit/qt/qtmultimedia.git/ (tag v6.12.0). Licencje źródłowe Qt: https://doc.qt.io/qt-6/licenses-used-in-qt.html. Paczki wydania zawierają zawiadomienia i teksty licencji w katalogu `licenses`. Kod aplikacji, lockfile oraz skrypty odbudowy są dostępne w repozytorium i w archiwum `SubtitleStudio-source.zip` przy tym samym wydaniu. Licencje i źródła bibliotek pozostają objęte warunkami ich autorów; szczegóły dostarczone z wheel są zachowane w paczce.
 
 Zewnętrzny FFmpeg na komputerze budowy to kompilacja `N-124716-g054dffd133-win64-gpl`, z kodekiem libx264. Nie jest kopiowana do wyniku. Jeżeli dołączysz własny ffmpeg.exe/ffprobe.exe, zweryfikuj `ffmpeg -version`, `ffmpeg -buildconf` i licencje użytych kodeków oraz dołącz odpowiadające źródła i zawiadomienia. Zobacz https://ffmpeg.org/legal.html.
 
 Słowniki pobrano z oficjalnego repozytorium https://github.com/LibreOffice/dictionaries. Zachowano oryginalne zawiadomienia bez ujednolicania ich licencji. Angielski używa en_US, niemiecki de_DE_frami, hiszpański es_ES. Szczegóły wszystkich baz zapisuje manifest. Słowniki są oddzielnymi plikami danych; można je zastąpić zgodną parą .dic/.aff.
+
+## Moduł transkrypcji Szept
+
+Szept (GPL-3.0-or-later) używa faster-whisper 1.2.1 (MIT), CTranslate2 4.8.4 (MIT), PyAV 19.0.2 (BSD), ONNX Runtime (MIT) i PyEnchant 3.3.0 (LGPL). Metadane i teksty licencji rzeczywiście zainstalowanych zależności zbiera scripts/collect_licenses.py. DLL Hunspell i GCC mają oddzielne zawiadomienia w assets/licenses/Szept-native. Modele nie są dołączone do instalatora.

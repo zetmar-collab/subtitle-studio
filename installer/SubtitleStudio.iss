@@ -1,5 +1,5 @@
 #define MyAppName "Subtitle Studio"
-#define MyAppVersion "0.2.1"
+#define MyAppVersion "0.6.1"
 #define MyAppExeName "SubtitleStudio.exe"
 
 [Setup]

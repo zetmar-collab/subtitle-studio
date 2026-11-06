@@ -1,0 +1,911 @@
+{
+  "repo": "LibreOffice/dictionaries",
+  "revision": "4f1df64b2e8e14751aa7c2205d170ca016071315",
+  "packs": {
+    "pl": {
+      "stem": "pl_PL/pl_PL",
+      "files": [
+        {
+          "path": "pl_PL/pl_PL.aff",
+          "size": 257542,
+          "sha": "a57905a9ca3473313613322c05ed63ea75f11839"
+        },
+        {
+          "path": "pl_PL/pl_PL.dic",
+          "size": 5252096,
+          "sha": "0a6df9f690a40c87269eb2b1863f06741129d15a"
+        },
+        {
+          "path": "pl_PL/README_en.txt",
+          "size": 2282,
+          "sha": "aa60cd78fdfa417d4b1fa1d3fd3f3d2726b2fad4"
+        },
+        {
+          "path": "pl_PL/README_pl.txt",
+          "size": 27814,
+          "sha": "04e81dec0dda9aaee0651f4e2c2ee49a46da8df5"
+        },
+        {
+          "path": "pl_PL/README_pl_PL.txt",
+          "size": 593,
+          "sha": "13932d87b5322fd97cee104b947a9ed71cb4c7f1"
+        }
+      ]
+    },
+    "en": {
+      "stem": "en/en_US",
+      "files": [
+        {
+          "path": "en/en_US.aff",
+          "size": 3205,
+          "sha": "290acfe87caf0f7ef44cf04dba4cd3b3cf2dbc58"
+        },
+        {
+          "path": "en/en_US.dic",
+          "size": 551762,
+          "sha": "b41fd203e6daf76934db99dec6572a230516368a"
+        },
+        {
+          "path": "en/README.txt",
+          "size": 2642,
+          "sha": "16ef20b51bac8b73e625836ec71ee90a717409cb"
+        },
+        {
+          "path": "en/README_en_AU.txt",
+          "size": 15732,
+          "sha": "8e870199249d37ea240fd723f5723858ee8d1ea3"
+        },
+        {
+          "path": "en/README_en_CA.txt",
+          "size": 15732,
+          "sha": "e17773103fbd925e963f59e59a8d11229a0a7dad"
+        },
+        {
+          "path": "en/README_en_GB.txt",
+          "size": 10644,
+          "sha": "505bc27b56627ede5febbeb38d9ee2ede892d0ec"
+        },
+        {
+          "path": "en/README_en_GB_thes.txt",
+          "size": 63,
+          "sha": "aff398af91e906243d3ac6e0e579a9827352abc9"
+        },
+        {
+          "path": "en/README_en_US.txt",
+          "size": 15732,
+          "sha": "4585c30cedd1d06508b0a0b488ddbf27c3094cdd"
+        },
+        {
+          "path": "en/README_en_ZA.txt",
+          "size": 35563,
+          "sha": "5a79307244f11b35fba9c06edc4dafb0eec35a2d"
+        },
+        {
+          "path": "en/README_hyph_en_GB.txt",
+          "size": 4569,
+          "sha": "4afac7b60bad9d8ba42b964706837834201ec321"
+        },
+        {
+          "path": "en/README_hyph_en_US.txt",
+          "size": 1888,
+          "sha": "8420172ba48044f75f8b85dc498657caba8abf95"
+        },
+        {
+          "path": "en/README_lightproof_en.txt",
+          "size": 166,
+          "sha": "43c91fe4068f9050162127837cbdac9b1ffd9569"
+        },
+        {
+          "path": "en/WordNet_license.txt",
+          "size": 1625,
+          "sha": "f1f96d88943fb1e7ee913aa619cf4c71c2698d0f"
+        },
+        {
+          "path": "en/license.txt",
+          "size": 15122,
+          "sha": "e37680cf1385db400bff88ac103d30e876a5103e"
+        }
+      ]
+    },
+    "en_GB": {
+      "stem": "en/en_GB",
+      "files": [
+        {
+          "path": "en/en_GB.aff",
+          "size": 44158,
+          "sha": "9a084c73a41341c96ca25cb35d35aba8542d56f2"
+        },
+        {
+          "path": "en/en_GB.dic",
+          "size": 1230571,
+          "sha": "3237865eb11f85c34a650f18757c9c54f3d98bd3"
+        },
+        {
+          "path": "en/README.txt",
+          "size": 2642,
+          "sha": "16ef20b51bac8b73e625836ec71ee90a717409cb"
+        },
+        {
+          "path": "en/README_en_AU.txt",
+          "size": 15732,
+          "sha": "8e870199249d37ea240fd723f5723858ee8d1ea3"
+        },
+        {
+          "path": "en/README_en_CA.txt",
+          "size": 15732,
+          "sha": "e17773103fbd925e963f59e59a8d11229a0a7dad"
+        },
+        {
+          "path": "en/README_en_GB.txt",
+          "size": 10644,
+          "sha": "505bc27b56627ede5febbeb38d9ee2ede892d0ec"
+        },
+        {
+          "path": "en/README_en_GB_thes.txt",
+          "size": 63,
+          "sha": "aff398af91e906243d3ac6e0e579a9827352abc9"
+        },
+        {
+          "path": "en/README_en_US.txt",
+          "size": 15732,
+          "sha": "4585c30cedd1d06508b0a0b488ddbf27c3094cdd"
+        },
+        {
+          "path": "en/README_en_ZA.txt",
+          "size": 35563,
+          "sha": "5a79307244f11b35fba9c06edc4dafb0eec35a2d"
+        },
+        {
+          "path": "en/README_hyph_en_GB.txt",
+          "size": 4569,
+          "sha": "4afac7b60bad9d8ba42b964706837834201ec321"
+        },
+        {
+          "path": "en/README_hyph_en_US.txt",
+          "size": 1888,
+          "sha": "8420172ba48044f75f8b85dc498657caba8abf95"
+        },
+        {
+          "path": "en/README_lightproof_en.txt",
+          "size": 166,
+          "sha": "43c91fe4068f9050162127837cbdac9b1ffd9569"
+        },
+        {
+          "path": "en/WordNet_license.txt",
+          "size": 1625,
+          "sha": "f1f96d88943fb1e7ee913aa619cf4c71c2698d0f"
+        },
+        {
+          "path": "en/license.txt",
+          "size": 15122,
+          "sha": "e37680cf1385db400bff88ac103d30e876a5103e"
+        }
+      ]
+    },
+    "de": {
+      "stem": "de/de_DE_frami",
+      "files": [
+        {
+          "path": "de/de_DE_frami.aff",
+          "size": 19067,
+          "sha": "12b9b584bd0806589bb499ae2967ae42b5cf87a6"
+        },
+        {
+          "path": "de/de_DE_frami.dic",
+          "size": 4356903,
+          "sha": "3d02c29db21679f65331a1ba5bb068babbb5fb45"
+        },
+        {
+          "path": "de/COPYING_GPLv2",
+          "size": 17992,
+          "sha": "a8cab0356b0b9656dd1a988d524772166016c4ec"
+        },
+        {
+          "path": "de/COPYING_GPLv3",
+          "size": 35147,
+          "sha": "94a9ed024d3859793618152ea559a168bbcbb5e2"
+        },
+        {
+          "path": "de/COPYING_LGPL_v2.0.txt",
+          "size": 25383,
+          "sha": "5bc8fb2c8f757e34a0d8f4644f589d57609e213f"
+        },
+        {
+          "path": "de/COPYING_LGPL_v2.1.txt",
+          "size": 26530,
+          "sha": "4362b49151d7b34ef83b3067a8f9c9f877d72a0e"
+        },
+        {
+          "path": "de/COPYING_OASIS.txt",
+          "size": 675,
+          "sha": "47c1c2bb4384852191c28a47685f2b59e08dadd3"
+        },
+        {
+          "path": "de/README_de_DE_frami.txt",
+          "size": 752,
+          "sha": "43d6c6c45ea75016b8b912d87a29e99a90a38635"
+        },
+        {
+          "path": "de/README_extension_owner.txt",
+          "size": 1444,
+          "sha": "822409cc8828a7a519111b0462efbb3df35c5b56"
+        },
+        {
+          "path": "de/README_hyph_de.txt",
+          "size": 1738,
+          "sha": "8921caef8669a6da5df523fa3491dde3624db5ea"
+        },
+        {
+          "path": "de/README_thesaurus.txt",
+          "size": 27432,
+          "sha": "9bdaebf7c4dae96502fafd7084169fe4e6c76566"
+        }
+      ]
+    },
+    "de_AT": {
+      "stem": "de/de_AT_frami",
+      "files": [
+        {
+          "path": "de/de_AT_frami.aff",
+          "size": 19068,
+          "sha": "9be547c4587d5c9dedd606d3c220ead41f786575"
+        },
+        {
+          "path": "de/de_AT_frami.dic",
+          "size": 4359309,
+          "sha": "7858516abf677eca5deb8090050466047bb81f56"
+        },
+        {
+          "path": "de/COPYING_GPLv2",
+          "size": 17992,
+          "sha": "a8cab0356b0b9656dd1a988d524772166016c4ec"
+        },
+        {
+          "path": "de/COPYING_GPLv3",
+          "size": 35147,
+          "sha": "94a9ed024d3859793618152ea559a168bbcbb5e2"
+        },
+        {
+          "path": "de/COPYING_LGPL_v2.0.txt",
+          "size": 25383,
+          "sha": "5bc8fb2c8f757e34a0d8f4644f589d57609e213f"
+        },
+        {
+          "path": "de/COPYING_LGPL_v2.1.txt",
+          "size": 26530,
+          "sha": "4362b49151d7b34ef83b3067a8f9c9f877d72a0e"
+        },
+        {
+          "path": "de/COPYING_OASIS.txt",
+          "size": 675,
+          "sha": "47c1c2bb4384852191c28a47685f2b59e08dadd3"
+        },
+        {
+          "path": "de/README_de_DE_frami.txt",
+          "size": 752,
+          "sha": "43d6c6c45ea75016b8b912d87a29e99a90a38635"
+        },
+        {
+          "path": "de/README_extension_owner.txt",
+          "size": 1444,
+          "sha": "822409cc8828a7a519111b0462efbb3df35c5b56"
+        },
+        {
+          "path": "de/README_hyph_de.txt",
+          "size": 1738,
+          "sha": "8921caef8669a6da5df523fa3491dde3624db5ea"
+        },
+        {
+          "path": "de/README_thesaurus.txt",
+          "size": 27432,
+          "sha": "9bdaebf7c4dae96502fafd7084169fe4e6c76566"
+        }
+      ]
+    },
+    "de_CH": {
+      "stem": "de/de_CH_frami",
+      "files": [
+        {
+          "path": "de/de_CH_frami.aff",
+          "size": 19068,
+          "sha": "1bccc156ea871ad7529906f2061f09747769672e"
+        },
+        {
+          "path": "de/de_CH_frami.dic",
+          "size": 4358308,
+          "sha": "ea103c61bf42b5239e9ba824d962c491a5181a00"
+        },
+        {
+          "path": "de/COPYING_GPLv2",
+          "size": 17992,
+          "sha": "a8cab0356b0b9656dd1a988d524772166016c4ec"
+        },
+        {
+          "path": "de/COPYING_GPLv3",
+          "size": 35147,
+          "sha": "94a9ed024d3859793618152ea559a168bbcbb5e2"
+        },
+        {
+          "path": "de/COPYING_LGPL_v2.0.txt",
+          "size": 25383,
+          "sha": "5bc8fb2c8f757e34a0d8f4644f589d57609e213f"
+        },
+        {
+          "path": "de/COPYING_LGPL_v2.1.txt",
+          "size": 26530,
+          "sha": "4362b49151d7b34ef83b3067a8f9c9f877d72a0e"
+        },
+        {
+          "path": "de/COPYING_OASIS.txt",
+          "size": 675,
+          "sha": "47c1c2bb4384852191c28a47685f2b59e08dadd3"
+        },
+        {
+          "path": "de/README_de_DE_frami.txt",
+          "size": 752,
+          "sha": "43d6c6c45ea75016b8b912d87a29e99a90a38635"
+        },
+        {
+          "path": "de/README_extension_owner.txt",
+          "size": 1444,
+          "sha": "822409cc8828a7a519111b0462efbb3df35c5b56"
+        },
+        {
+          "path": "de/README_hyph_de.txt",
+          "size": 1738,
+          "sha": "8921caef8669a6da5df523fa3491dde3624db5ea"
+        },
+        {
+          "path": "de/README_thesaurus.txt",
+          "size": 27432,
+          "sha": "9bdaebf7c4dae96502fafd7084169fe4e6c76566"
+        }
+      ]
+    },
+    "fr": {
+      "stem": "fr_FR/dictionaries/fr",
+      "files": [
+        {
+          "path": "fr_FR/dictionaries/fr.aff",
+          "size": 199870,
+          "sha": "bc5cee894fa19d37c10b65192128677fbbc68ccb"
+        },
+        {
+          "path": "fr_FR/dictionaries/fr.dic",
+          "size": 1236490,
+          "sha": "fdb058b940dbb690ac17c0c8e231497d678d216e"
+        },
+        {
+          "path": "fr_FR/dictionaries/README_dict_fr.txt",
+          "size": 2758,
+          "sha": "fc74384d35cecef4b7f32f9131ec56aa3723d203"
+        },
+        {
+          "path": "fr_FR/dictionaries/README_hyph_fr.txt",
+          "size": 3738,
+          "sha": "3f35865c3e5aec34f354b3679a1c47e1dc14cfc9"
+        },
+        {
+          "path": "fr_FR/dictionaries/README_thes_fr.txt",
+          "size": 2034,
+          "sha": "400e9b9b6a7f1666f95856a4ded2e2b9e6387fb5"
+        }
+      ]
+    },
+    "es": {
+      "stem": "es/es_ES",
+      "files": [
+        {
+          "path": "es/es_ES.aff",
+          "size": 169202,
+          "sha": "8ece2647bffe4e36f5deaf38f1a40e7452e9edf6"
+        },
+        {
+          "path": "es/es_ES.dic",
+          "size": 715989,
+          "sha": "4a1b9b29175abc663949c16aacd5650475cc4f85"
+        },
+        {
+          "path": "es/LICENSE.md",
+          "size": 991,
+          "sha": "2e4370a6cf5f873b39a70947d3166174db75f2a6"
+        },
+        {
+          "path": "es/README_hunspell_es.txt",
+          "size": 2615,
+          "sha": "80f264842ea15210c764ba228f0f1302062516d0"
+        },
+        {
+          "path": "es/README_hyph_es.txt",
+          "size": 1821,
+          "sha": "3010a9aa8f748f7fad9911fd51e64ca2c7945640"
+        },
+        {
+          "path": "es/README_th_es.txt",
+          "size": 677,
+          "sha": "08d8bb09ea62acbb85c42d711403d6125d8f468e"
+        }
+      ]
+    },
+    "it": {
+      "stem": "it_IT/it_IT",
+      "files": [
+        {
+          "path": "it_IT/it_IT.aff",
+          "size": 70054,
+          "sha": "33baffde761b2e2ca2fe9b3bcf54d928b29f3cd4"
+        },
+        {
+          "path": "it_IT/it_IT.dic",
+          "size": 1295083,
+          "sha": "bb7549a2819ffd722ea7ff3509c56e7316ae84f0"
+        },
+        {
+          "path": "it_IT/README_hyph_it_IT.txt",
+          "size": 949,
+          "sha": "5965123bc91905894f013323683adbb635f10ff9"
+        },
+        {
+          "path": "it_IT/README_it_IT.txt",
+          "size": 38902,
+          "sha": "60a8a1600c788661753bb3a810c5100b084dd9eb"
+        },
+        {
+          "path": "it_IT/README_th_it_IT.txt",
+          "size": 43451,
+          "sha": "899277f57d228bca1022bb86f1d5769b6587895c"
+        },
+        {
+          "path": "it_IT/legacy/it_IT_COPYING",
+          "size": 34695,
+          "sha": "e5dedf3f1f44e3cd48193bed0f5ec06dd1386a8c"
+        },
+        {
+          "path": "it_IT/legacy/it_IT_README.1st",
+          "size": 3099,
+          "sha": "9994450a5ac6d7825003e4e75f71a470c2b0ac6d"
+        },
+        {
+          "path": "it_IT/legacy/it_IT_README.txt",
+          "size": 18501,
+          "sha": "d8d4ab98338977e7fa8c7537bcb192180e65ade0"
+        },
+        {
+          "path": "it_IT/legacy/it_IT_license.txt",
+          "size": 1099,
+          "sha": "fa95246c18bb3661e38ddde5a8bdd5d5793ad82e"
+        },
+        {
+          "path": "it_IT/legacy/th_it_IT_COPYING",
+          "size": 34695,
+          "sha": "e5dedf3f1f44e3cd48193bed0f5ec06dd1386a8c"
+        },
+        {
+          "path": "it_IT/legacy/th_it_IT_README",
+          "size": 7478,
+          "sha": "dfb63acb935b3a2dc8dd9e5a2b13fcd0f3820594"
+        },
+        {
+          "path": "it_IT/legacy/th_it_IT_copyright_licenza.txt",
+          "size": 1098,
+          "sha": "24b065ffd763aaa396a33bc6bfd4c0f270e26dc5"
+        }
+      ]
+    },
+    "pt_PT": {
+      "stem": "pt_PT/pt_PT",
+      "files": [
+        {
+          "path": "pt_PT/pt_PT.aff",
+          "size": 95089,
+          "sha": "ef6aaf55ccc2cfba2948cf5a92eb5f4849634c12"
+        },
+        {
+          "path": "pt_PT/pt_PT.dic",
+          "size": 1485977,
+          "sha": "2b6da831cdf48eeb3df605ad2841732ef5f13981"
+        },
+        {
+          "path": "pt_PT/LICENSES.txt",
+          "size": 1830,
+          "sha": "d27c8b452935902902e20f5ff8c5ded2948d177c"
+        },
+        {
+          "path": "pt_PT/README_hyph_pt_PT.txt",
+          "size": 486,
+          "sha": "76868d4d3ed736c0dc2a75ddff43e567bb4dfc4e"
+        },
+        {
+          "path": "pt_PT/README_pt_PT.txt",
+          "size": 1106,
+          "sha": "a0028f1e27dcfc075087072372ffe89599bb5c35"
+        },
+        {
+          "path": "pt_PT/README_th_pt_PT.txt",
+          "size": 26537,
+          "sha": "8f32842f734a713ea204575f33da87a2fe80f440"
+        }
+      ]
+    },
+    "pt_BR": {
+      "stem": "pt_BR/pt_BR",
+      "files": [
+        {
+          "path": "pt_BR/pt_BR.aff",
+          "size": 979792,
+          "sha": "4664ad6fc893e5683c1140eab8c1e1faeca802d3"
+        },
+        {
+          "path": "pt_BR/pt_BR.dic",
+          "size": 4477695,
+          "sha": "849c1dcaf873e72e364f7a64b6f1f2a679bbb097"
+        },
+        {
+          "path": "pt_BR/README_Lightproof_pt_BR.txt",
+          "size": 229,
+          "sha": "a8319cabdc9c8cd582c4851b49e0c524e5161264"
+        },
+        {
+          "path": "pt_BR/README_en.txt",
+          "size": 1461,
+          "sha": "bfc16998d97662b7cd52ac2042e402acaf6980be"
+        },
+        {
+          "path": "pt_BR/README_hyph_pt_BR.txt",
+          "size": 19284,
+          "sha": "d1f762980cdc663db905b878ea0aa730ba55d207"
+        },
+        {
+          "path": "pt_BR/README_pt_BR.txt",
+          "size": 16348,
+          "sha": "b3b5b26cdac108a1a785ab41ed98bd1add71f0bc"
+        },
+        {
+          "path": "pt_BR/license-thes.readme",
+          "size": 1707,
+          "sha": "b6bf70a0c7fecebd07bba243d3996e4f5e1923f2"
+        }
+      ]
+    },
+    "uk": {
+      "stem": "uk_UA/uk_UA",
+      "files": [
+        {
+          "path": "uk_UA/uk_UA.aff",
+          "size": 211759,
+          "sha": "2a604054953b9997b1b7250427fb244736a1c66b"
+        },
+        {
+          "path": "uk_UA/uk_UA.dic",
+          "size": 8919324,
+          "sha": "ff848bbb610332bec2fa867f91d7489154c3585d"
+        },
+        {
+          "path": "uk_UA/README_hyph_uk_UA.txt",
+          "size": 957,
+          "sha": "0f06722fd9a3692134109fe6d2245e6786c1b644"
+        },
+        {
+          "path": "uk_UA/README_th_uk_UA.txt",
+          "size": 450,
+          "sha": "bb7f1cab19b29414726e032a910f68476de4eede"
+        },
+        {
+          "path": "uk_UA/README_uk_UA.txt",
+          "size": 362,
+          "sha": "bce4936be9f0c6cf7ac6d729d3f81ce0b4d79bf8"
+        }
+      ]
+    },
+    "ru": {
+      "stem": "ru_RU/ru_RU",
+      "files": [
+        {
+          "path": "ru_RU/ru_RU.aff",
+          "size": 71236,
+          "sha": "b6bef6d261914c579542b59c89dd03b83ae5927c"
+        },
+        {
+          "path": "ru_RU/ru_RU.dic",
+          "size": 3473191,
+          "sha": "e5cfd3614c2303be12da481198b5d914e592da9c"
+        },
+        {
+          "path": "ru_RU/README_Lightproof_ru_RU.txt",
+          "size": 224,
+          "sha": "9c5dbb01c8ff36ead9ceccf74d887457b87df2d8"
+        },
+        {
+          "path": "ru_RU/README_ru_RU.txt",
+          "size": 1886,
+          "sha": "4620b48a8a37d8f3f29dda667ea0aacc992bd26c"
+        },
+        {
+          "path": "ru_RU/README_thes_ru_RU_M_aot_and_v2.txt",
+          "size": 784,
+          "sha": "1736d7f3410c5b9261b08924795e19cf063471f0"
+        }
+      ]
+    },
+    "cs": {
+      "stem": "cs_CZ/cs_CZ",
+      "files": [
+        {
+          "path": "cs_CZ/cs_CZ.aff",
+          "size": 111575,
+          "sha": "9ebd2c44607cb515a1f69d96c3215cd27ccb523c"
+        },
+        {
+          "path": "cs_CZ/cs_CZ.dic",
+          "size": 3656362,
+          "sha": "eef8d834994a592926e0e2aed005f38beaed7deb"
+        },
+        {
+          "path": "cs_CZ/README_cs.txt",
+          "size": 59410,
+          "sha": "cb1dcb20f00c2c5217be201afd500ec72b4f8f0e"
+        },
+        {
+          "path": "cs_CZ/README_en.txt",
+          "size": 13105,
+          "sha": "7d4266ad66f7a45846845baf1a8abb8926612985"
+        },
+        {
+          "path": "cs_CZ/thesaurus/README.txt",
+          "size": 211,
+          "sha": "cfeb9dc6aa1eef54377f271ebd841157a4f60039"
+        }
+      ]
+    },
+    "sk": {
+      "stem": "sk_SK/sk_SK",
+      "files": [
+        {
+          "path": "sk_SK/sk_SK.aff",
+          "size": 225271,
+          "sha": "a1a9eaab1e519059c4c4667486805bbbf2d6144b"
+        },
+        {
+          "path": "sk_SK/sk_SK.dic",
+          "size": 3362212,
+          "sha": "7ce548b22afc2644a1e5f16b830e71ac147070b6"
+        },
+        {
+          "path": "sk_SK/LICENSE.txt",
+          "size": 67574,
+          "sha": "28a351fb4ca7606471af428c257b0786bcd608d9"
+        },
+        {
+          "path": "sk_SK/README_en.txt",
+          "size": 2027,
+          "sha": "a3edf6a5dc5094eba7d591308577ac8e6ed7949a"
+        },
+        {
+          "path": "sk_SK/README_sk.txt",
+          "size": 2081,
+          "sha": "9191ebdc70acd5905749f010d88123e0203ce233"
+        },
+        {
+          "path": "sk_SK/README_th_sk_SK_v2.txt",
+          "size": 2397,
+          "sha": "b3b5e4a9cb124dc24e4184389ce1b021bfc2f1d7"
+        }
+      ]
+    },
+    "nl": {
+      "stem": "nl_NL/nl_NL",
+      "files": [
+        {
+          "path": "nl_NL/nl_NL.aff",
+          "size": 46557,
+          "sha": "28c160b72e6e6779d910d91e105a3df9b26f79c3"
+        },
+        {
+          "path": "nl_NL/nl_NL.dic",
+          "size": 2488246,
+          "sha": "444fd9c6243b0e4c873786f32e086fd9ed0a6075"
+        },
+        {
+          "path": "nl_NL/LICENSE.txt",
+          "size": 25820,
+          "sha": "acd929a9a7a18a2ac6b2a7eda8eeb5433d2d2190"
+        },
+        {
+          "path": "nl_NL/README.md",
+          "size": 7824,
+          "sha": "08e947987b608984d5980940d3bc935696f3001b"
+        }
+      ]
+    },
+    "sv": {
+      "stem": "sv_SE/dictionaries/sv_SE",
+      "files": [
+        {
+          "path": "sv_SE/dictionaries/sv_SE.aff",
+          "size": 18582,
+          "sha": "e92dc32f272a6dda7adec0e06e1457e11e7ee9a3"
+        },
+        {
+          "path": "sv_SE/dictionaries/sv_SE.dic",
+          "size": 3938932,
+          "sha": "5dc894a20218a96c12ba64e6a3ee3c007efac1d3"
+        },
+        {
+          "path": "sv_SE/LICENSE_en_US.txt",
+          "size": 378,
+          "sha": "ec1c9d868268109508610a49c4bf3be2b585f245"
+        },
+        {
+          "path": "sv_SE/LICENSE_sv_SE.txt",
+          "size": 353,
+          "sha": "b1f4437b7b60079b11af0e0265768594c0dec404"
+        },
+        {
+          "path": "sv_SE/README_hyph_sv.txt",
+          "size": 650,
+          "sha": "d8c36b5394437249d84c63d3d2959a6b91f7a8a2"
+        },
+        {
+          "path": "sv_SE/README_th_sv_SE.txt",
+          "size": 1092,
+          "sha": "fd738d30adb3cd88c30e76654a89f11229c5ec51"
+        }
+      ]
+    },
+    "da": {
+      "stem": "da_DK/da_DK",
+      "files": [
+        {
+          "path": "da_DK/da_DK.aff",
+          "size": 82864,
+          "sha": "97b224bff19f29c702a3df1237444ca9a877547e"
+        },
+        {
+          "path": "da_DK/da_DK.dic",
+          "size": 3894244,
+          "sha": "f5e6ca77405c2d0725c4ba0ecc3ae26f4204cb20"
+        },
+        {
+          "path": "da_DK/HYPH_da_DK_README.txt",
+          "size": 555,
+          "sha": "387bcae11df1d43038b315ac7f642eedc18b8d82"
+        },
+        {
+          "path": "da_DK/README_da_DK.txt",
+          "size": 787,
+          "sha": "d07391937eff4b28358d314bc67b35d0906c56fa"
+        }
+      ]
+    },
+    "nb": {
+      "stem": "no/nb_NO",
+      "files": [
+        {
+          "path": "no/nb_NO.aff",
+          "size": 17382,
+          "sha": "33ec7dfa33e3ee3528a469ec07e817d1a504a3b6"
+        },
+        {
+          "path": "no/nb_NO.dic",
+          "size": 9336265,
+          "sha": "761ead5428d126099bbb8c4e3522a15a6249aa40"
+        },
+        {
+          "path": "no/COPYING",
+          "size": 17992,
+          "sha": "a8cab0356b0b9656dd1a988d524772166016c4ec"
+        },
+        {
+          "path": "no/README",
+          "size": 4286,
+          "sha": "8d8e5f9e851db985d2325a6186860717e3215a67"
+        },
+        {
+          "path": "no/README_NO.txt",
+          "size": 4286,
+          "sha": "8d8e5f9e851db985d2325a6186860717e3215a67"
+        },
+        {
+          "path": "no/README_hyph_NO.txt",
+          "size": 342,
+          "sha": "166663374831ae6ea666ac55274a5ff729949e9c"
+        }
+      ]
+    },
+    "hu": {
+      "stem": "hu_HU/hu_HU",
+      "files": [
+        {
+          "path": "hu_HU/hu_HU.aff",
+          "size": 2316267,
+          "sha": "b808cb467449684a642b631a205ecbddc9dc8e1c"
+        },
+        {
+          "path": "hu_HU/hu_HU.dic",
+          "size": 1786144,
+          "sha": "a39532ed2967a62ee6218c8e363fb97642a3a472"
+        },
+        {
+          "path": "hu_HU/README_hu_HU.txt",
+          "size": 1190,
+          "sha": "77c452a1cc46f0882b54fea34e7554e18d3a475b"
+        },
+        {
+          "path": "hu_HU/README_hyph_hu_HU.txt",
+          "size": 544,
+          "sha": "8c3fd8ce4bd22faca900e25e9562d9472aeca9df"
+        },
+        {
+          "path": "hu_HU/README_lightproof_hu_HU.txt",
+          "size": 183,
+          "sha": "1d1c41192d6014df56aaccfbe2ef8d95a287f64f"
+        },
+        {
+          "path": "hu_HU/README_th_hu_HU_v2.txt",
+          "size": 18089,
+          "sha": "ca028b5f2de596e188e17ceb9d5bf942e502310f"
+        }
+      ]
+    },
+    "ro": {
+      "stem": "ro/ro_RO",
+      "files": [
+        {
+          "path": "ro/ro_RO.aff",
+          "size": 55195,
+          "sha": "757892ee0d74c778cedebfdd2a07ef135ddd3e7b"
+        },
+        {
+          "path": "ro/ro_RO.dic",
+          "size": 2202394,
+          "sha": "1a843e14aaa3458b6550a06567d648749903293c"
+        },
+        {
+          "path": "ro/COPYING.GPL",
+          "size": 18325,
+          "sha": "f9c5fda5a3bf0bafbd4084452f1bbea510e4307e"
+        },
+        {
+          "path": "ro/COPYING.LGPL",
+          "size": 26532,
+          "sha": "c4792dd27a32d2ce510ec3e6ea008d87a7bdbe9a"
+        },
+        {
+          "path": "ro/COPYING.MPL",
+          "size": 25755,
+          "sha": "7714141d154290f53e9e60c615a8edc9b51a8df7"
+        },
+        {
+          "path": "ro/README_EN.txt",
+          "size": 1633,
+          "sha": "57aea88c095e83ced12cfd68e058ecc067b4cee3"
+        }
+      ]
+    },
+    "tr": {
+      "stem": "tr_TR/tr_TR",
+      "files": [
+        {
+          "path": "tr_TR/tr_TR.aff",
+          "size": 2283891,
+          "sha": "975fb9eb39d1759d2a6fe5bc358b6a9ad22d41e9"
+        },
+        {
+          "path": "tr_TR/tr_TR.dic",
+          "size": 36136702,
+          "sha": "341ed7c918b9b2a53db363a880ba897209e4d0fc"
+        },
+        {
+          "path": "tr_TR/LICENSE",
+          "size": 16726,
+          "sha": "d0a1fa1482eea82e19510e7920cbe3a03e41f691"
+        },
+        {
+          "path": "tr_TR/README.txt",
+          "size": 367,
+          "sha": "05b544350dc0b8b9687f7c5049dd80f354797d70"
+        }
+      ]
+    }
+  }
+}

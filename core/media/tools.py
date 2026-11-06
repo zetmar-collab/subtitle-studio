@@ -10,19 +10,26 @@ FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 
 def binary(name):
     folder = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parents[2]
-    local = folder / (name + ('.exe' if os.name == 'nt' else ''))
-    found = str(local) if local.exists() else shutil.which(name)
+    filename = name + ('.exe' if os.name == 'nt' else '')
+    candidates = [folder/filename]
+    if getattr(sys, 'frozen', False):
+        candidates.append(Path(getattr(sys, '_MEIPASS', folder/'_internal'))/'bin'/filename)
+    found = next((str(path) for path in candidates if path.is_file()), None) or shutil.which(name)
     if not found:
         raise ValueError(f'Brak {name}. Dodaj ffmpeg.exe i ffprobe.exe obok aplikacji lub do PATH.')
     return found
 
 
-def probe(path):
+def read_metadata(path):
     r = subprocess.run([binary('ffprobe'), '-v', 'error', '-show_format', '-show_streams', '-of', 'json', str(path)],
                        capture_output=True, timeout=30, creationflags=FLAGS)
     if r.returncode:
         raise ValueError('Nie można odczytać multimediów. Plik jest uszkodzony lub format nie jest obsługiwany.')
-    d = json.loads(r.stdout)
+    return json.loads(r.stdout)
+
+
+def probe(path):
+    d = read_metadata(path)
     streams = d.get('streams', [])
     v = next((s for s in streams if s['codec_type'] == 'video' and not s.get('disposition', {}).get('attached_pic')), None)
     if not v:
@@ -38,3 +45,14 @@ def probe(path):
     return dict(width=w, height=h, fps=num/den if den and num else 25,
                 duration=round(float(d.get('format', {}).get('duration', v.get('duration', 0)))*1000),
                 codec=v['codec_name'], streams=streams)
+
+
+def probe_audio(path):
+    d = read_metadata(path)
+    stream = next((s for s in d.get('streams',[]) if s['codec_type'] == 'audio'), None)
+    if stream is None:
+        raise ValueError('Wybrany plik nie zawiera ścieżki audio.')
+    duration = stream.get('duration')
+    if duration in (None,'N/A'):
+        duration = d.get('format',{}).get('duration',0)
+    return dict(duration=round(float(duration)*1000),index=stream['index'])

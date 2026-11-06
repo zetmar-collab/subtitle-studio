@@ -1,4 +1,36 @@
+## Weryfikacja 0.6.1
+
+200 testów zaliczonych, 1 opcjonalny test słownika pominięty. Ruff E9/F63/F7/F82 bez błędów. Pełny zestaw wykonano po poprawkach (102,23 s na bieżącym Windows).
+
+Nowe regresje: przycisk filmu uruchamia ASR po analizie, filtr plików obejmuje wideo, podgląd odświeża czas przy przewijaniu, okno Ollamy wysyła cały zakres przez rzeczywisty osobny proces do lokalnego serwera testowego i po ponownym otwarciu wybiera bieżącą kartę. Sprawdzono stałość pozycji liter/słów/tła, czasy ASR, pauzy, nieaktualne wyrównanie, emoji i zawijanie długich słów. Eksport i zgodność pikseli obejmują wszystkie 9 efektów.
+
+W rzeczywistej próbie GUI: MP4 z polską mową → Whisper tiny (5 segmentów, 32 słowa) → przekazanie napisów. Osobna próba GUI Ollamy z lokalnym Gemma4:e2b przesłała dwa syntetyczne napisy i zastosowała obie poprawki z zachowaniem czasów. Tryb dokładniejszej analizy wykrył na tej próbce więcej błędów niż wyłączony reasoning; nie jest to benchmark jakości.
+
+Gotowy EXE 0.6.1 powtórzył tę samą próbę MP4 → ASR i okno Ollamy → lokalny model → zastosowanie dwóch poprawek. Raport: `regression-0.6.1-frozen.json`. Dodatkowa kontrola paczki sprawdziła podgląd, ikonę, eksport, kolejkę, tworzenie i łączenie filmów oraz pokaz zdjęć. Testowano na bieżącym Windows, bez czystej maszyny wirtualnej.
+
+## Weryfikacja 0.6.0
+
+188 testów zaliczonych, 1 opcjonalny test słownika PL pominięty. Ruff E9/F63/F7/F82: bez błędów. Testy wykonano w izolowanym środowisku z zależnościami z lockfile i hashami.
+
+Sprawdzono rzeczywiste procesy FFmpeg: tworzenie i łączenie filmów, pokaz zdjęć z audio, kolejność obrazów, ruch zdjęcia w zdekodowanych klatkach, kolejkę dwóch proporcji i anulowanie z zachowaniem poprzedniego wyniku. Kontrolowane testy obejmują blokujący odczyt renderera oraz nieudany start procesu.
+
+AI: testy lokalnego serwera HTTP sprawdzają JSON, partie, błędne identyfikatory, wykluczenie modeli chmurowych i adresów zdalnych, przekierowania oraz zachowanie tekstu/czasów/undo. Wykonano także rzeczywistą korektę i próbę GUI z lokalnym Gemma4:e2b na syntetycznym zdaniu. To nie jest benchmark jakości korekty ani naturalnej mowy.
+
+Audyt pip-audit: 34 zależności produkcyjne, 0 znanych podatności, 0 pominiętych. Wynik dotyczy stanu bazy w chwili tego sprawdzenia. CI jest zdefiniowane lokalnie; nie uruchamiano go w GitHub.
+
+Pomiar lokalny: kontrola jakości 6000 segmentów po zmianie: 4.38 ms (w audycie 0.5.0: 1994,8 ms). Pomiar nie obejmuje tworzenia elementów GUI. Tabela nadal korzysta z QTableWidget; bardzo duże projekty wymagają dalszych pomiarów.
+
+## Integracja 0.5.0
+
+138 testów zaliczonych, 1 pominięty (opcjonalny zewnętrzny słownik PL). Przeniesiono testy modelu, audio, pisowni i GUI Szept. Adapter sprawdza jednostki czasu, nieaktualne czasy słów, walidację, cofanie, skróty klawiaturowe i anulowanie zamknięcia.
+
+Sprawdzono rzeczywiste ASR z lokalnym tiny na syntetycznych próbkach PL i EN oraz ciszy; w procesie testowym zablokowano połączenia sieciowe. Test EXE sprawdza obie karty, Hunspell w osobnym procesie, przekazywanie w obie strony i zapis projektu. Nie jest to benchmark jakości naturalnej mowy ani test CUDA.
+
 # Weryfikacja
+
+Wersja 0.4.0 przeszła 80 testów (`python -m pytest -q`, 29,28 s). Nowe testy renderują zdjęcie z audio w sześciu rozmiarach, sprawdzają pasy i centralne kadrowanie, długość wyniku, powtarzanie/zatrzymanie/skrócenie klipu, częstotliwość wybranego dźwięku, anulowanie i ochronę oryginałów. Test GUI uruchamia rzeczywisty proces kreatora i sprawdza podgląd. Kontrola paczki dodatkowo tworzy pionowy MP4 przez gotowy EXE.
+
+Wersja 0.3.0 przeszła 67 testów (`python -m pytest -q`, 18,32 s na bieżącym komputerze). Testy rozszerzeń obejmują rzeczywiste łączenie H.264/AAC, kolejność klipów, różne proporcje, ciszę przy braku audio, anulowanie, pracę dialogu w osobnym procesie, zoom/przyciąganie/undo oraz eksport zakresu z napisami i audio. [Opis funkcji](CONCAT.md)
 
 Wynik 2026-10-31: **39 testów zakończonych powodzeniem**, `python -m pytest -q`, czas 10,26 s na bieżącym komputerze (Windows 11 x64, Python 3.12.10, PySide6 6.12.0). Testy uruchamiają rzeczywisty FFmpeg, nie zastępują go mockiem. Qt uruchamiane jest w trybie offscreen, z jawnym załadowaniem czcionek systemowych.
 

@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
 from PySide6.QtGui import QImage, QGuiApplication
 from core.projects.model import load
 from core.media.tools import probe, binary, FLAGS
@@ -14,7 +15,11 @@ from core.compositor.render import compose
 
 def render(project, target, options, progress=lambda p: None, cancelled=lambda: False):
     info = probe(project.video)
-    duration = min(info['duration']/1000, options.get('seconds', info['duration']/1000))
+    start = float(options.get('start',0))
+    requested = float(options.get('seconds',info['duration']/1000))
+    if not math.isfinite(start) or not math.isfinite(requested) or start < 0 or start >= info['duration']/1000:
+        raise ValueError('Nieprawidłowy zakres eksportu.')
+    duration = min(info['duration']/1000-start, requested)
     if duration <= 0:
         raise ValueError('Nieznany czas trwania filmu.')
     w, h = options.get('width', info['width']), options.get('height', info['height'])
@@ -31,22 +36,44 @@ def render(project, target, options, progress=lambda p: None, cancelled=lambda: 
         raise ValueError('Nie można nadpisać grafiki źródłowej.')
     if any(t.source and target == Path(t.source).resolve() for t in project.tracks):
         raise ValueError('Nie można nadpisać napisów źródłowych.')
+    codec = options.get('codec', 'libx264')
+    if codec not in ('libx264', 'libx265', 'libvpx-vp9'):
+        raise ValueError('Nieobsługiwany koder.')
+    mode=options.get('fit','fit')
+    if mode not in ('fit','crop'):
+        raise ValueError('Nieprawidłowy tryb kadrowania / Invalid framing mode')
     fd, tempname = tempfile.mkstemp(prefix='.subtitle-', suffix=target.suffix, dir=target.parent)
     os.close(fd)
     temp = Path(tempname)
     decoder = encoder = None
-    codec = options.get('codec', 'libx264')
-    if codec not in ('libx264', 'libx265', 'libvpx-vp9'):
-        raise ValueError('Nieobsługiwany koder.')
+    stopped=threading.Event();timed_out=threading.Event()
+    activity=[time.monotonic()]
+    idle=float(options.get('idle_timeout',120))
+    if not math.isfinite(idle) or not 1<=idle<=600:
+        temp.unlink(missing_ok=True)
+        raise ValueError('Nieprawidłowy limit czasu / Invalid idle timeout')
+    def watch():
+        while not stopped.wait(.1):
+            expired=time.monotonic()-activity[0]>idle
+            if cancelled() or expired:
+                if expired:timed_out.set()
+                for process in (decoder,encoder):
+                    if process and process.poll() is None:
+                        try:process.kill()
+                        except OSError:pass
+                return
+    watcher=threading.Thread(target=watch,daemon=True);watcher.start()
     started = time.monotonic()
     try:
         with tempfile.TemporaryFile() as decode_log, tempfile.TemporaryFile() as encode_log:
-            vf = f'scale={w}:{h}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps}'
-            decoder = subprocess.Popen([binary('ffmpeg'), '-v', 'error', '-nostdin', '-i', project.video,
+            vf = (f'scale={w}:{h}:force_original_aspect_ratio={"decrease" if mode=="fit" else "increase"}:force_divisible_by=2,'
+                  + (f'pad={w}:{h}:(ow-iw)/2:(oh-ih)/2' if mode=='fit' else f'crop={w}:{h}:(iw-ow)/2:(ih-oh)/2')
+                  + f',setsar=1,fps={fps}')
+            decoder = subprocess.Popen([binary('ffmpeg'), '-v', 'error', '-nostdin', '-ss', str(start), '-i', project.video,
                                         '-t', str(duration), '-vf', vf, '-an', '-sn', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1'],
                                        stdout=subprocess.PIPE, stderr=decode_log, creationflags=FLAGS)
             cmd = [binary('ffmpeg'), '-v', 'error', '-nostdin', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
-                   '-s', f'{w}x{h}', '-r', str(fps), '-i', 'pipe:0', '-i', project.video,
+                   '-s', f'{w}x{h}', '-r', str(fps), '-i', 'pipe:0', '-ss', str(start), '-i', project.video,
                    '-map', '0:v:0', '-map', '1:a?', '-c:v', codec, '-crf', str(options.get('crf', 20)),
                    '-pix_fmt', 'yuv420p', '-c:a', 'libopus' if codec == 'libvpx-vp9' else 'aac', '-b:a', '192k',
                    '-t', str(duration), '-map_metadata', '-1']
@@ -62,18 +89,21 @@ def render(project, target, options, progress=lambda p: None, cancelled=lambda: 
                 if cancelled():
                     raise InterruptedError('Anulowano / Cancelled')
                 data = decoder.stdout.read(size)
+                if cancelled():raise InterruptedError('Anulowano / Cancelled')
+                if timed_out.is_set():raise TimeoutError('FFmpeg nie odpowiada / FFmpeg idle timeout')
                 if not data:
                     break
                 if len(data) != size:
                     raise ValueError('Niepełna klatka wideo.')
                 frame = QImage(data, w, h, w*3, QImage.Format.Format_RGB888).copy()
-                frame = compose(frame, project, count/fps*1000)
+                frame = compose(frame, project, start*1000+count/fps*1000)
                 # QImage may pad rows to 4 bytes; remove padding before rawvideo encoding.
                 raw = bytes(frame.constBits())
                 if frame.bytesPerLine() != w*3:
                     stride = frame.bytesPerLine()
                     raw = b''.join(raw[y*stride:y*stride+w*3] for y in range(h))
                 encoder.stdin.write(raw)
+                activity[0]=time.monotonic()
                 count += 1
                 if count % max(1, round(fps/4)) == 0:
                     fraction = min(.99, count/max(1, math.ceil(duration*fps)))
@@ -92,11 +122,13 @@ def render(project, target, options, progress=lambda p: None, cancelled=lambda: 
             os.replace(temp, target)
             progress(dict(percent=100, eta=0))
     finally:
+        stopped.set()
         for process in (decoder, encoder):
             if process and process.poll() is None:
                 process.kill()
                 process.wait()
         temp.unlink(missing_ok=True)
+        watcher.join(timeout=2)
 
 
 def main(args):

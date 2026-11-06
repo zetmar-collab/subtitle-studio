@@ -6,13 +6,15 @@ import re
 import sys
 import tempfile
 import time
-from PySide6.QtCore import Qt, QUrl, QTimer, QProcess, QThreadPool, QStandardPaths, QTranslator, QCoreApplication, QRectF, QLibraryInfo
+import threading
+from PySide6.QtCore import Qt, QUrl, QTimer, QProcess, QThreadPool, QStandardPaths, QTranslator, QCoreApplication, QRectF, QLibraryInfo, QItemSelectionModel, QEvent
 from PySide6.QtGui import QAction, QKeySequence, QImage, QColor, QIcon
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QVideoSink
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QSplitter,
     QPushButton, QLabel, QListWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
     QSpinBox, QDoubleSpinBox, QCheckBox, QLineEdit, QFileDialog, QMessageBox, QInputDialog,
-    QSlider, QDialog, QDialogButtonBox, QProgressBar, QGroupBox, QScrollArea, QTextEdit, QColorDialog)
+    QSlider, QDialog, QDialogButtonBox, QProgressBar, QGroupBox, QScrollArea, QTextEdit, QColorDialog,
+    QApplication, QAbstractSpinBox)
 from core.projects.model import Project, Track, Segment, Logo, Style, save, load
 from core.subtitles.service import read, write, shift, stretch, warnings
 from core.media.tools import probe
@@ -22,6 +24,9 @@ from ui.preview import Preview, Timeline
 from ui.jobs import Job, waveform
 from ui.colors import ColorButton
 from core.version import VERSION
+from core.subtitles.editing import duplicate, ripple_delete
+from core.projects.safety import protect_output
+from core.projects.recovery import RecoverySession
 
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parents[1]))
 
@@ -37,6 +42,8 @@ class Window(QMainWindow):
         self.future = []
         self.loading = False
         self._color_session = False
+        self._media_request = 0
+        self._wave_cancel = threading.Event()
         self.info = dict(width=1920, height=1080, duration=0, fps=25)
         self.export_process = None
         self.export_temp = None
@@ -45,7 +52,8 @@ class Window(QMainWindow):
         self.translated = []
         self.store = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation))
         self.store.mkdir(parents=True, exist_ok=True)
-        self.autopath = self.store/'recovery.autosave.json'
+        self.recovery = RecoverySession(self.store, 'editor', 'recovery.autosave.json')
+        self.autopath = self.recovery.path
         self.spell = Spellchecker(self.store/'dictionaries', ROOT/'assets/dictionaries')
         self.pool = QThreadPool.globalInstance()
         self.player = QMediaPlayer(self)
@@ -61,6 +69,7 @@ class Window(QMainWindow):
         self.resize(1480, 940)
         self.setAcceptDrops(True)
         self.build()
+        QApplication.instance().installEventFilter(self)
         self.refresh()
         self.apply_theme()
         self.autotimer = QTimer(self)
@@ -88,6 +97,7 @@ class Window(QMainWindow):
     def action(self, pl, en, shortcut, callback):
         a = self.text(QAction(self), pl, en)
         a.setShortcut(QKeySequence(shortcut))
+        a.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         a.triggered.connect(callback)
         self.addAction(a)
         return a
@@ -108,9 +118,22 @@ class Window(QMainWindow):
             toolbar.addAction(self.action(pl, en, key, cb))
         self.action('Cofnij', 'Undo', 'Ctrl+Z', self.undo)
         self.action('Ponów', 'Redo', 'Ctrl+Y', self.redo)
-        self.action('Odtwarzaj / pauza', 'Play / pause', 'Space', self.play)
-        self.action('Poprzednia klatka', 'Previous frame', 'Left', lambda: self.step(-1))
-        self.action('Następna klatka', 'Next frame', 'Right', lambda: self.step(1))
+        self.action('Odtwarzaj / pauza', 'Play / pause', 'Space', lambda: self.navigate(self.play))
+        self.action('Poprzednia klatka', 'Previous frame', 'Left', lambda: self.navigate(lambda: self.step(-1)))
+        self.action('Następna klatka', 'Next frame', 'Right', lambda: self.navigate(lambda: self.step(1)))
+        self.action('Początek filmu', 'Video start', 'Home', lambda: self.navigate(lambda: self.player.setPosition(0)))
+        self.action('Koniec filmu', 'Video end', 'End', lambda: self.navigate(lambda: self.player.setPosition(self.info['duration'])))
+        self.action('Poprzednia granica', 'Previous boundary', 'Ctrl+Left', lambda: self.navigate(lambda: self.jump_boundary(-1)))
+        self.action('Następna granica', 'Next boundary', 'Ctrl+Right', lambda: self.navigate(lambda: self.jump_boundary(1)))
+        self.action('Duplikuj napisy', 'Duplicate subtitles', 'Ctrl+D', lambda: self.navigate(self.duplicate_segments))
+        self.action('Usuń i domknij napisy', 'Ripple delete subtitles', 'Shift+Delete', lambda: self.navigate(self.ripple_segments))
+        self.action('Podziel napis', 'Split subtitle', 'Ctrl+B', lambda: self.navigate(self.split_segment))
+        self.action('Powiększ oś', 'Zoom timeline in', 'Ctrl+=', lambda: self.timeline.set_zoom(self.timeline.zoom*1.5))
+        self.action('Pomniejsz oś', 'Zoom timeline out', 'Ctrl+-', lambda: self.timeline.set_zoom(self.timeline.zoom/1.5))
+        self.action('Początek zakresu', 'Range start', 'I', lambda: self.navigate(lambda: self.range_in.setValue(self.player.position())))
+        self.action('Koniec zakresu', 'Range end', 'O', lambda: self.navigate(lambda: self.range_out.setValue(self.player.position())))
+        toolbar.addAction(self.action('Połącz filmy', 'Join videos', 'Ctrl+J', self.join_videos))
+        toolbar.addAction(self.action('Obraz + audio', 'Visual + audio', 'Ctrl+Shift+V', self.create_video))
         self.action('Pełny ekran', 'Full screen', 'F11', lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen())
         central = QWidget()
         root = QVBoxLayout(central)
@@ -219,8 +242,15 @@ class Window(QMainWindow):
         self.stroke = QSpinBox(); self.stroke.setRange(0, 15)
         row('Obrys', 'Outline', self.stroke)
         self.effect = QComboBox()
-        self.effect.addItems(['static', 'fade', 'left', 'right', 'up', 'typewriter', 'words', 'highlight', 'pop'])
-        self.effect.setToolTip('Aktywne słowo: czasy z „Słowa” lub równy podział segmentu. / Highlight: manual word timings or equal intervals.')
+        for key,label in [('static','Bez animacji / Static'),('fade','Zanikanie / Fade'),
+                          ('left','Wjazd z lewej / From left'),('right','Wjazd z prawej / From right'),
+                          ('up','Wjazd z dołu / From below'),('typewriter','Maszyna do pisania / Typewriter'),
+                          ('words','Kolejne słowa / Word reveal'),('highlight','Aktywne słowo / Active word'),
+                          ('pop','Powiększenie / Pop')]:
+            self.effect.addItem(label,key)
+        self.effect.setToolTip('Aktywne i kolejne słowa: aktualne czasy ASR lub z edytora „Słowa”. '
+            'Bez czasów: aktywne słowo według długości napisu, kolejne według czasu animacji. / '
+            'Word effects use aligned timings when available; otherwise use equal intervals.')
         row('Animacja', 'Animation', self.effect)
         self.anim = QSpinBox(); self.anim.setRange(1, 5000); self.anim.setSuffix(' ms')
         row('Czas animacji', 'Animation duration', self.anim)
@@ -273,15 +303,47 @@ class Window(QMainWindow):
         self.button('QC', 'QC', self.quality_dialog, controls)
         lo.addLayout(controls)
         self.table = QTableWidget(0, 6)
+        self.table.setMinimumHeight(130)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
         self.table.cellChanged.connect(self.cell_changed)
         self.table.cellDoubleClicked.connect(lambda row, col: self.player.setPosition(self.track().segments[row].start) if col in (0,1) else None)
         lo.addWidget(self.table)
-        self.timeline = Timeline(); self.timeline.seek.connect(self.player.setPosition)
-        lo.addWidget(self.timeline)
-        vertical.addWidget(lower); vertical.setSizes([520, 330])
+        ranges = QHBoxLayout()
+        self.range_in = QSpinBox(); self.range_in.setRange(0,2147483647); self.range_in.setSuffix(' ms')
+        self.range_out = QSpinBox(); self.range_out.setRange(0,2147483647); self.range_out.setSuffix(' ms')
+        self.button('I · Początek', 'I · In', lambda: self.range_in.setValue(self.player.position()), ranges)
+        ranges.addWidget(self.range_in)
+        self.button('O · Koniec', 'O · Out', lambda: self.range_out.setValue(self.player.position()), ranges)
+        ranges.addWidget(self.range_out)
+        self.range_in.valueChanged.connect(self.range_changed)
+        self.range_out.valueChanged.connect(self.range_changed)
+        self.loop_range = self.text(QCheckBox(), 'Pętla zakresu', 'Loop range'); ranges.addWidget(self.loop_range)
+        self.snap = self.text(QCheckBox(), 'Przyciągaj', 'Snap'); self.snap.setChecked(True); ranges.addWidget(self.snap)
+        self.snap.toggled.connect(lambda value: setattr(self.timeline,'snapping',value))
+        zoom_out = self.button('−', '−', lambda: self.timeline.set_zoom(self.timeline.zoom/1.5), ranges)
+        zoom_out.setFixedWidth(34)
+        self.zoom_label = QLabel('100%'); ranges.addWidget(self.zoom_label)
+        zoom_in = self.button('+', '+', lambda: self.timeline.set_zoom(self.timeline.zoom*1.5), ranges)
+        zoom_in.setFixedWidth(34)
+        self.button('Dopasuj oś', 'Fit timeline', lambda: self.timeline.set_zoom(1), ranges)
+        lo.addLayout(ranges)
+        self.timeline = Timeline()
+        self.timeline.seek.connect(self.player.setPosition)
+        self.timeline.segmentSelected.connect(self.select_timeline_segment)
+        self.timeline.segmentEdited.connect(self.edit_timeline_segment)
+        self.table.itemSelectionChanged.connect(self.selection_changed)
+        self.timeline.zoomChanged.connect(lambda zoom: self.zoom_label.setText(f'{zoom*100:.0f}%'))
+        self.timeline_scroll = QScrollArea()
+        self.timeline_scroll.setWidgetResizable(True)
+        self.timeline_scroll.setWidget(self.timeline)
+        self.timeline_scroll.setMinimumHeight(150)
+        lo.addWidget(self.timeline_scroll)
+        edit_menu = self.menuBar().addMenu('Montaż / Edit')
+        edit_menu.addAction(self.action('Duplikuj napisy', 'Duplicate subtitles', '', self.duplicate_segments))
+        edit_menu.addAction(self.action('Usuń i domknij napisy', 'Ripple delete subtitles', '', self.ripple_segments))
+        vertical.addWidget(lower); vertical.setSizes([450, 400])
         root.addWidget(vertical, 1)
         self.exportbar = QWidget(); el = QHBoxLayout(self.exportbar); el.setContentsMargins(0,0,0,0)
         self.progress = QProgressBar(); el.addWidget(self.progress)
@@ -295,16 +357,17 @@ class Window(QMainWindow):
 
     def about(self):
         QMessageBox.information(self,f'Subtitle Studio {VERSION}',self.tr_text(
-            'Lokalny edytor napisów i logo.\nKod aplikacji: MIT. PySide6 / Qt: LGPL v3.\nQt Multimedia korzysta z bibliotek FFmpeg (LGPL v2.1+).\nZewnętrzne ffmpeg.exe i ffprobe.exe nie są dołączone.\nPełne licencje: folder licenses i THIRD_PARTY.md.\nZakres implementacji: docs/STATUS.md.',
-            'Local subtitle and logo editor.\nApplication: MIT. PySide6 / Qt: LGPL v3.\nQt Multimedia uses FFmpeg libraries (LGPL v2.1+).\nExternal ffmpeg.exe and ffprobe.exe are not bundled.\nFull licenses: licenses folder and THIRD_PARTY.md.\nImplemented scope: docs/STATUS.md.'))
+            'Lokalny edytor napisów i logo.\nPołączona aplikacja: GPL-3.0-or-later. PySide6 / Qt: LGPL v3.\nQt Multimedia korzysta z bibliotek FFmpeg (LGPL v2.1+).\nZewnętrzne ffmpeg.exe i ffprobe.exe nie są dołączone.\nPełne licencje: folder licenses i THIRD_PARTY.md.\nZakres implementacji: docs/STATUS.md.',
+            'Local subtitle and logo editor.\nCombined application: GPL-3.0-or-later. PySide6 / Qt: LGPL v3.\nQt Multimedia uses FFmpeg libraries (LGPL v2.1+).\nExternal ffmpeg.exe and ffprobe.exe are not bundled.\nFull licenses: licenses folder and THIRD_PARTY.md.\nImplemented scope: docs/STATUS.md.'))
 
     def track(self):
         return self.project.tracks[min(self.active_track, len(self.project.tracks)-1)]
 
     def checkpoint(self):
-        self.history.append(copy.deepcopy(self.project.data()))
-        self.history = self.history[-60:]
+        from core.projects.history import trim
+        self.history.append(self.project.data())
         self.future.clear()
+        trim(self)
         self.dirty = True
         self.update_title()
 
@@ -316,6 +379,8 @@ class Window(QMainWindow):
             old_video = self.project.video
             self.future.append(self.project.data())
             self.project = Project.from_data(self.history.pop())
+            from core.projects.history import trim
+            trim(self)
             self.dirty = True
             self.restore_view(old_video)
 
@@ -324,10 +389,14 @@ class Window(QMainWindow):
             old_video = self.project.video
             self.history.append(self.project.data())
             self.project = Project.from_data(self.future.pop())
+            from core.projects.history import trim
+            trim(self)
             self.dirty = True
             self.restore_view(old_video)
 
     def restore_view(self, old_video):
+        self.timeline.drag = None
+        self.timeline.ghost = None
         self.retranslate(); self.apply_theme()
         if old_video != self.project.video:
             self.player.setSource(QUrl.fromLocalFile(self.project.video) if self.project.video else QUrl())
@@ -345,6 +414,7 @@ class Window(QMainWindow):
 
     def refresh(self):
         self.loading = True
+        selected = self.selected()
         self.active_track = min(self.active_track, len(self.project.tracks)-1)
         self.active_logo = min(self.active_logo, len(self.project.logos)-1)
         self.preview.project = self.project
@@ -359,17 +429,33 @@ class Window(QMainWindow):
         self.table.setHorizontalHeaderLabels([self.tr_text('Początek', 'Start'), self.tr_text('Koniec', 'End'),
             self.tr_text('Tekst', 'Text'), self.tr_text('Język', 'Language'), 'ms', self.tr_text('Kontrola jakości', 'Quality checks')])
         self.table.setRowCount(len(self.track().segments))
-        checks = warnings(self.track().segments, self.info['duration'], **self.project.quality)
+        signature = (tuple((s.start,s.end,s.text,s.timed) for s in self.track().segments),
+                     self.info['duration'],tuple(sorted(self.project.quality.items())))
+        if getattr(self,'_checks_signature',None) != signature:
+            self._checks = warnings(self.track().segments,self.info['duration'],**self.project.quality)
+            self._checks_signature = signature
+        checks = self._checks
         for i, s in enumerate(self.track().segments):
             for j, val in enumerate([timecode(s.start), timecode(s.end), s.text, s.language, str(s.end-s.start), checks[i]]):
-                item = QTableWidgetItem(val)
+                item = self.table.item(i,j)
+                if item is None:
+                    item = QTableWidgetItem(val)
+                    self.table.setItem(i,j,item)
+                elif item.text() != val:
+                    item.setText(val)
                 if j >= 4:
                     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                if j == 5 and val:
-                    item.setForeground(QColor('#dfaa65'))
-                self.table.setItem(i, j, item)
+                if j == 5:
+                    item.setForeground(QColor('#dfaa65') if val else self.palette().text())
         self.lang.setCurrentIndex(0 if self.project.language == 'pl' else 1)
         self.theme.setCurrentIndex(['dark','light','system'].index(self.project.theme))
+        self.range_in.setValue(self.project.range_start)
+        self.range_out.setValue(self.project.range_end or self.info['duration'])
+        self.timeline.setMinimumHeight(max(130,100+24*len(self.project.tracks)))
+        self.table.clearSelection()
+        for row in selected:
+            if row < self.table.rowCount():
+                self.table.selectionModel().select(self.table.model().index(row,0),QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows)
         self.loading = False
         self.show_properties()
         self.preview.update(); self.timeline.update()
@@ -393,7 +479,7 @@ class Window(QMainWindow):
         self.outline_color.set_color(s.outline); self.active_color.set_color(s.active_color)
         for button in (self.color,self.background,self.outline_color,self.active_color):
             button.setEnabled(self.active_logo < 0)
-        self.effect.setCurrentText(s.effect); self.anim.setValue(s.animation_ms)
+        self.effect.setCurrentIndex(self.effect.findData(s.effect)); self.anim.setValue(s.animation_ms)
         obj = self.project.logos[self.active_logo] if self.active_logo >= 0 else s
         self.x.setValue(obj.x); self.y.setValue(obj.y)
         if self.active_logo >= 0:
@@ -412,7 +498,7 @@ class Window(QMainWindow):
         s.font = self.font_combo.currentText(); s.size = self.size.value(); s.bold = self.bold.isChecked()
         s.color = self.color.value(); s.background = self.background.value(); s.stroke = self.stroke.value()
         s.outline = self.outline_color.value(); s.active_color = self.active_color.value()
-        s.effect = self.effect.currentText(); s.animation_ms = self.anim.value()
+        s.effect = self.effect.currentData(); s.animation_ms = self.anim.value()
         obj = self.project.logos[self.active_logo] if self.active_logo >= 0 else s
         obj.x = self.x.value(); obj.y = self.y.value()
         if self.active_logo >= 0:
@@ -499,15 +585,136 @@ class Window(QMainWindow):
 
     def position(self, ms):
         self.clock.setText(timecode(ms))
+        # Also update overlays while seeking a paused or low-frame-rate video.
+        self.preview.ms = ms
+        self.preview.update()
         if not self.scrub.isSliderDown():
             self.scrub.setValue(ms)
         self.timeline.ms = ms; self.timeline.update()
+        if self.timeline.zoom > 1 and self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.timeline_scroll.ensureVisible(round(self.timeline.x_at(ms)),50,60,20)
+        end = self.project.range_end or self.info['duration']
+        if self.loop_range.isChecked() and self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            if end > self.project.range_start and ms >= end:
+                self.player.setPosition(self.project.range_start)
 
     def play(self):
         if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.player.pause()
         else:
+            end = self.project.range_end or self.info['duration']
+            if self.loop_range.isChecked() and end > self.project.range_start:
+                if not self.project.range_start <= self.player.position() < end:
+                    self.player.setPosition(self.project.range_start)
             self.player.play()
+
+    def navigate(self, callback):
+        focus = QApplication.focusWidget()
+        if not isinstance(focus, (QLineEdit, QTextEdit, QAbstractSpinBox, QComboBox)):
+            callback()
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.ShortcutOverride:
+            focus = QApplication.focusWidget()
+            if focus and (focus is self or self.isAncestorOf(focus)) and isinstance(focus,(QLineEdit,QTextEdit,QAbstractSpinBox,QComboBox)):
+                keys = (Qt.Key.Key_Space,Qt.Key.Key_Left,Qt.Key.Key_Right,Qt.Key.Key_Home,Qt.Key.Key_End,
+                        Qt.Key.Key_I,Qt.Key.Key_O,Qt.Key.Key_D,Qt.Key.Key_B,Qt.Key.Key_Delete)
+                if event.key() in keys:
+                    event.accept()
+                    return True
+        return super().eventFilter(watched,event)
+
+    def range_changed(self):
+        if self.loading or not self.info['duration']:
+            return
+        start = min(self.range_in.value(),self.info['duration']-1)
+        end = min(self.info['duration'],max(1,self.range_out.value()))
+        if self.sender() is self.range_in:
+            end = max(start+1,end)
+        else:
+            start = min(start,end-1)
+        self.checkpoint()
+        self.project.range_start, self.project.range_end = start, end
+        self.loading = True
+        self.range_in.setValue(start)
+        self.range_out.setValue(end)
+        self.loading = False
+        self.timeline.update()
+
+    def selection_changed(self):
+        if not self.loading:
+            rows = self.selected()
+            self.timeline.selection = (self.active_track,rows[0]) if len(rows) == 1 else None
+            self.timeline.update()
+
+    def jump_boundary(self, direction):
+        points = sorted({time for track in self.project.tracks if track.visible
+                         for segment in track.segments for time in (segment.start, segment.end)})
+        position = self.player.position()
+        if direction > 0:
+            target = next((time for time in points if time > position), self.info['duration'])
+        else:
+            target = next((time for time in reversed(points) if time < position), 0)
+        self.player.setPosition(target)
+
+    def select_timeline_segment(self, track, row):
+        self.active_track = track
+        self.active_logo = -1
+        self.refresh()
+        self.table.selectRow(row)
+        self.table.scrollToItem(self.table.item(row,2))
+
+    def edit_timeline_segment(self, track, row, start, end):
+        segment = self.project.tracks[track].segments[row]
+        self.checkpoint()
+        if end-start == segment.end-segment.start:
+            shift([segment],start-segment.start)
+        else:
+            segment.start, segment.end = start, end
+            segment.words = []
+            segment.review=True;segment.checked=False
+        segment.timed = True
+        self.refresh()
+        self.table.selectRow(row)
+
+    def duplicate_segments(self):
+        rows = self.selected()
+        if not rows:
+            return
+        try:
+            result, created = duplicate(self.track().segments,rows,self.info['duration'])
+            self.checkpoint()
+            self.track().segments = result
+            self.refresh()
+            self.table.clearSelection()
+            for row in created:
+                self.table.selectionModel().select(self.table.model().index(row,0),QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows)
+        except ValueError as error:
+            self.error(error)
+
+    def ripple_segments(self):
+        rows = self.selected()
+        if not rows:
+            return
+        try:
+            result = ripple_delete(self.track().segments,rows)
+            self.checkpoint()
+            self.track().segments = result
+            self.refresh()
+        except ValueError as error:
+            self.error(error)
+
+    def join_videos(self):
+        from ui.join import JoinDialog
+        dialog = JoinDialog(self)
+        dialog.exec()
+        dialog.deleteLater()
+
+    def create_video(self):
+        from ui.create_video import CreateVideoDialog
+        dialog = CreateVideoDialog(self)
+        dialog.exec()
+        dialog.deleteLater()
 
     def step(self, direction):
         self.player.pause()
@@ -517,16 +724,25 @@ class Window(QMainWindow):
         if not isinstance(path, str):
             path, _ = QFileDialog.getOpenFileName(self, self.tr_text('Otwórz film', 'Open video'), '', 'Video (*.mp4 *.mov *.mkv *.avi *.webm *.wmv *.mpg *.mpeg *.m4v *.ts *.mts *.m2ts *.flv *.3gp);;All (*)')
         if path:
+            self._media_request += 1
+            request = self._media_request
             self.statusBar().showMessage(self.tr_text('Analiza filmu…', 'Analyzing video…'))
             project = self.project
             self.pool.start(Job(lambda: probe(path),
-                                lambda info: self.set_video(path, info) if self.project is project else None,
-                                lambda error: self.error(error) if self.project is project else None))
+                                lambda info: self.set_video(path, info) if self.project is project and request == self._media_request else None,
+                                lambda error: self.error(error) if self.project is project and request == self._media_request else None))
 
-    def set_video(self, path, info):
+    def set_video(self, path, info, preserve_range=False):
+        self.timeline.drag = None
+        self.timeline.ghost = None
         self.checkpoint()
         self.project.video = str(Path(path).resolve())
         self.info = info
+        if not preserve_range:
+            self.project.range_start = 0
+            self.project.range_end = info['duration']
+        self.timeline.wave = []
+        self.timeline.set_zoom(1)
         self.player.setSource(QUrl.fromLocalFile(self.project.video))
         self.player.pause()
         self.scrub.setRange(0, info['duration']); self.timeline.duration = info['duration']
@@ -534,7 +750,12 @@ class Window(QMainWindow):
                           '\n'.join(f"{s['codec_type']}: {s.get('codec_name','?')}" for s in info.get('streams',[])))
         self.refresh()
         self.statusBar().showMessage(self.tr_text('Film gotowy. Tworzenie fali audio…', 'Video ready. Building waveform…'))
-        self.pool.start(Job(lambda: waveform(path), lambda wave: self.set_wave(path, wave), lambda _: None))
+        self.start_wave(path)
+
+    def start_wave(self,path):
+        self._wave_cancel.set();flag=threading.Event();self._wave_cancel=flag
+        self.pool.start(Job(lambda:waveform(path,cancelled=flag.is_set),
+            lambda wave:self.set_wave(path,wave) if not flag.is_set() else None,lambda error:None))
 
     def set_wave(self, path, wave):
         if Path(path).resolve() == Path(self.project.video).resolve():
@@ -617,6 +838,7 @@ class Window(QMainWindow):
                 s.timed = s.end > s.start >= 0
             if col in (0,1,2):
                 s.words = []  # stale word alignment must never silently survive timing/text edits
+                s.review=True;s.checked=False
             self.refresh()
         except Exception as e:
             self.error(e); self.refresh()
@@ -642,10 +864,23 @@ class Window(QMainWindow):
         ms = self.player.position()
         if not s.start < ms < s.end:
             return self.error(self.tr_text('Ustaw kursor wewnątrz segmentu.', 'Place playhead inside segment.'))
+        words = s.text.split()
+        if len(words) < 2:
+            return self.error(self.tr_text('Napis musi mieć co najmniej dwa słowa.', 'The caption needs at least two words.'))
+        aligned = len(s.words) == len(words)
+        if aligned:
+            middle = min(range(1,len(words)),key=lambda i: abs(s.words[i]['start']-ms))
+            ms = s.words[middle]['start']
+        else:
+            middle, ok = QInputDialog.getInt(self, 'Podział / Split',
+                self.tr_text('Liczba słów w pierwszej części', 'Words in the first part'), len(words)//2, 1, len(words)-1)
+            if not ok:
+                return
         self.checkpoint()
-        words = s.text.split(); middle = max(1, len(words)//2)
-        new = Segment(ms, s.end, ' '.join(words[middle:]), s.language)
-        s.end = ms; s.text = ' '.join(words[:middle]); s.words = []
+        new = Segment(ms, s.end, ' '.join(words[middle:]), s.language,
+                      copy.deepcopy(s.words[middle:]) if aligned else [],review=True)
+        s.end = ms; s.text = ' '.join(words[:middle]); s.words = s.words[:middle] if aligned else []
+        s.review=True;s.checked=False
         self.track().segments.insert(rows[0]+1, new); self.refresh()
 
     def merge_segments(self):
@@ -656,7 +891,8 @@ class Window(QMainWindow):
             return self.error('Wybierz sąsiadujące segmenty / Select adjacent segments')
         self.checkpoint(); segments = self.track().segments
         merged = Segment(min(segments[r].start for r in rows), max(segments[r].end for r in rows),
-                         ' '.join(segments[r].text for r in rows), segments[rows[0]].language)
+                         ' '.join(segments[r].text for r in rows), segments[rows[0]].language,review=True,
+                         original=' '.join(segments[r].original or segments[r].text for r in rows))
         segments[rows[0]:rows[-1]+1] = [merged]; self.refresh()
 
     def set_time(self, start):
@@ -667,6 +903,7 @@ class Window(QMainWindow):
                 s = self.track().segments[row]
                 setattr(s, 'start' if start else 'end', self.player.position())
                 s.timed = s.end > s.start >= 0; s.words = []
+                s.review=True;s.checked=False
             self.refresh()
 
     def shift_dialog(self):
@@ -694,37 +931,18 @@ class Window(QMainWindow):
         rows = self.selected()
         if not rows:
             return
-        s = self.track().segments[rows[0]]
-        tokens = visible_text(s.text).split()
-        if not tokens or s.end <= s.start:
-            return
-        dialog = QDialog(self); dialog.setWindowTitle(self.tr_text('Ręczne czasy słów', 'Manual word timing')); layout = QVBoxLayout(dialog)
-        layout.addWidget(QLabel(self.tr_text('Początek i koniec w ms filmu. Brak automatycznego dopasowania do mowy.', 'Start/end in media ms. No automatic speech alignment.')))
-        table = QTableWidget(len(tokens), 3); table.setHorizontalHeaderLabels(['Word', 'Start ms', 'End ms'])
-        duration = s.end - s.start
-        for i, word in enumerate(tokens):
-            timing = s.words[i] if i < len(s.words) else dict(
-                start=s.start + i * duration // len(tokens),
-                end=s.start + (i + 1) * duration // len(tokens),
-            )
-            for j, val in enumerate([word, timing['start'], timing['end']]):
-                item = QTableWidgetItem(str(val))
-                if j == 0:
-                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                table.setItem(i,j,item)
-        layout.addWidget(table)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject); layout.addWidget(buttons)
-        if dialog.exec():
-            try:
-                words = [dict(text=table.item(i,0).text(), start=int(table.item(i,1).text()), end=int(table.item(i,2).text())) for i in range(table.rowCount())]
-                if any(not s.start <= w['start'] < w['end'] <= s.end for w in words) or any(a['end'] > b['start'] for a,b in zip(words, words[1:])):
-                    raise ValueError('Czasy słów muszą rosnąć bez nakładania i mieścić się w segmencie.')
-                self.checkpoint(); s.words = words; self.track().style.effect = 'highlight'; self.show_properties(); self.preview.update()
-            except Exception as e:
-                self.error(e)
+        try:
+            from ui.word_timing import WordTimingDialog
+            dialog=WordTimingDialog(self,rows[0])
+            if dialog.exec():dialog.apply()
+            dialog.deleteLater()
+        except ValueError as error:
+            self.error(error)
 
     def spelling(self):
+        if hasattr(self,'spell_delegate'):
+            self.spell_delegate()
+            return
         project = self.project
         languages = {self.track().segments[row].language for row in (self.selected() or range(len(self.track().segments)))}
         self.statusBar().showMessage(self.tr_text('Ładowanie lokalnych słowników…', 'Loading local dictionaries…'))
@@ -749,6 +967,7 @@ class Window(QMainWindow):
                         self.spell.add(word)
                     elif value != choices[-2]:
                         self.checkpoint(); s.text = re.sub(r'(?<!\w)'+re.escape(word)+r'(?!\w)', lambda _: value, s.text); s.words = []
+                        s.review=True;s.checked=False
             self.refresh()
         except Exception as e:
             self.error(e)
@@ -763,6 +982,7 @@ class Window(QMainWindow):
             for s in self.track().segments:
                 if old in s.text:
                     s.text = s.text.replace(old, new); s.words = []
+                    s.review=True;s.checked=False
             self.refresh()
 
     def apply_preset(self, index):
@@ -771,21 +991,27 @@ class Window(QMainWindow):
     def save_preset(self):
         path, _ = QFileDialog.getSaveFileName(self, 'Preset', '', 'JSON (*.json)')
         if path:
-            from dataclasses import asdict
-            Path(path).write_text(json.dumps(asdict(self.track().style), ensure_ascii=False, indent=2), encoding='utf-8')
+            try:
+                from dataclasses import asdict
+                from srtstudio.project import atomic_write
+                target = protect_output(self.project,path,'.json')
+                atomic_write(target,json.dumps(asdict(self.track().style.validate()),ensure_ascii=False,indent=2))
+            except (OSError,ValueError) as error:
+                self.error(error)
 
     def load_preset(self):
         path, _ = QFileDialog.getOpenFileName(self, 'Preset', '', 'JSON (*.json)')
         if path:
             try:
                 style = Style(**json.loads(Path(path).read_text(encoding='utf-8')))
-                if not 8 <= style.size <= 300 or not 0 <= style.x <= 100 or not 0 <= style.y <= 100:
-                    raise ValueError('Nieprawidłowy preset')
+                style.validate()
                 self.checkpoint(); self.track().style = style; self.show_properties(); self.preview.update()
             except Exception as e:
                 self.error(e)
 
     def save_project(self):
+        if hasattr(self,'before_save'):
+            self.before_save()
         path = self.path
         if not path:
             path, _ = QFileDialog.getSaveFileName(self, self.tr_text('Zapisz projekt', 'Save project'), '', 'Subtitle Studio (*.subtitlelogo.json)')
@@ -793,34 +1019,44 @@ class Window(QMainWindow):
             return False
         try:
             save(self.project, path); self.path = path; self.dirty = False
-            self.autopath.unlink(missing_ok=True); self.refresh(); return True
+            self.autopath.unlink(missing_ok=True)
+            self.recovery.discard_claims()
+            if hasattr(self,'session_saved'):
+                self.session_saved()
+            self.refresh(); return True
         except Exception as e:
             self.error(e); return False
 
     def confirm_unsaved(self):
-        if not self.dirty:
+        if not self.dirty and not (hasattr(self,'session_dirty') and self.session_dirty()):
             return True
         answer = QMessageBox.question(self, 'Subtitle Studio', self.tr_text('Zapisać zmiany w projekcie?', 'Save project changes?'),
                                       QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel)
         return self.save_project() if answer == QMessageBox.StandardButton.Save else answer == QMessageBox.StandardButton.Discard
 
     def new_project(self):
+        if hasattr(self,'can_replace') and not self.can_replace():
+            return False
         if self.export_process:
             self.error(self.tr_text('Najpierw zakończ lub anuluj eksport.', 'Finish or cancel the export first.'))
-            return
+            return False
         if not self.confirm_unsaved():
-            return
+            return False
         try:
             self.autopath.unlink(missing_ok=True)
         except OSError as error:
             self.error(error)
-            return
+            return False
 
+        self._media_request += 1
+        self._wave_cancel.set()
         self.project = Project(language=self.project.language, theme=self.project.theme)
+        self.recovery.discard_claims()
         self.path = None
         self.dirty = False
         self.history.clear()
         self.future.clear()
+        self._history_sizes={}
         self.active_track = 0
         self.active_logo = -1
         self._last_drag = 0
@@ -834,13 +1070,23 @@ class Window(QMainWindow):
         self.preview.rect = QRectF()
         self.timeline.wave = []
         self.timeline.duration = 1
+        self.timeline.selection = None
+        self.timeline.drag = None
+        self.timeline.ghost = None
+        self.timeline.set_zoom(1)
+        self.loop_range.setChecked(False)
         self.scrub.setRange(0, 0)
         self.position(0)
         self.presets.setCurrentIndex(0)
         self.statusBar().clearMessage()
         self.refresh()
+        if hasattr(self,'session_reset'):
+            self.session_reset()
+        return True
 
     def open_project(self, path=None):
+        if hasattr(self,'can_replace') and not self.can_replace():
+            return
         if not self.confirm_unsaved():
             return
         if not isinstance(path, str):
@@ -856,25 +1102,60 @@ class Window(QMainWindow):
                     if not found:
                         return
                     setattr(obj, key, found)
-            info = probe(project.video) if project.video else self.info
-            self.project = project; self.path = path; self.history.clear(); self.future.clear(); self.active_track = 0; self.active_logo = -1
+            self._media_request += 1
+            request = self._media_request
+            recovering = Path(path) in self.recovery.candidates()
+            def commit(info=None):
+                if request != self._media_request:
+                    return
+                if recovering and not self.recovery.claim(path):
+                    self.error('Ta kopia jest już odzyskiwana w innej sesji / Recovery is in use by another session')
+                    return
+                self.project = project; self.path = path; self.history.clear(); self.future.clear(); self.active_track = 0; self.active_logo = -1
+                self.reset_media()
+                if project.video:
+                    self.set_video(project.video, info, preserve_range=True)
+                self.history.clear(); self.dirty = recovering
+                self._history_sizes={}
+                if recovering:
+                    self.path = None
+                self.refresh(); self.retranslate(); self.apply_theme()
+                if hasattr(self,'project_loaded'):
+                    self.project_loaded()
+                if recovering:
+                    self.autosave()
             if project.video:
-                self.set_video(project.video, info)
-            self.history.clear(); self.dirty = False; self.refresh(); self.retranslate(); self.apply_theme()
+                self.pool.start(Job(lambda: probe(project.video),commit,
+                    lambda error: self.error(error) if request == self._media_request else None))
+            else:
+                commit()
         except Exception as e:
             self.error(e)
 
     def autosave(self):
+        if hasattr(self,'before_save'):
+            self.before_save()
         if self.dirty and not self._color_session:
             try:
                 save(self.project, self.autopath)
-            except OSError:
+            except (OSError,ValueError,TypeError):
                 self.statusBar().showMessage(self.tr_text('Nie udało się zapisać kopii awaryjnej.', 'Recovery save failed.'))
 
     def recover(self):
-        if self.autopath.exists():
+        candidates = self.recovery.candidates()
+        if candidates:
             if QMessageBox.question(self, 'Recovery', self.tr_text('Odzyskać ostatnią kopię awaryjną?', 'Recover last autosave?')) == QMessageBox.StandardButton.Yes:
-                self.open_project(str(self.autopath)); self.path = None; self.dirty = True
+                self.open_project(str(candidates[0]))
+
+    def reset_media(self):
+        self._wave_cancel.set()
+        self.player.stop(); self.player.setSource(QUrl())
+        self.info = dict(width=1920,height=1080,duration=0,fps=25)
+        self.meta.clear(); self.preview.frame = QImage(); self.preview.ms = 0
+        self.preview.output_size = None; self.preview.rect = QRectF()
+        self.timeline.wave = []; self.timeline.duration = 1; self.timeline.ms = 0
+        self.timeline.selection = None; self.timeline.drag = None; self.timeline.ghost = None
+        self.timeline.set_zoom(1); self.scrub.setRange(0,0); self.loop_range.setChecked(False)
 
     def export_subtitles(self):
         path, _ = QFileDialog.getSaveFileName(self, self.tr_text('Eksportuj napisy (treść i czasy)', 'Export subtitles (text and timing)'), '', 'SRT (*.srt);;WebVTT (*.vtt);;ASS (*.ass)')
@@ -898,6 +1179,8 @@ class Window(QMainWindow):
         fps = QDoubleSpinBox(); fps.setRange(1,120); fps.setDecimals(3); fps.setValue(min(120,self.info['fps']))
         crf = QSpinBox(); crf.setRange(0,51); crf.setValue(20)
         test = QCheckBox(self.tr_text('Tylko pierwsze 10 sekund', 'First 10 seconds only'))
+        selected_range = QCheckBox(self.tr_text('Eksportuj zakres I–O', 'Export In–Out range'))
+        form.addRow(selected_range)
         form.addRow(self.tr_text('Profil', 'Profile'), profile); form.addRow(self.tr_text('Rozmiar (dopasuj + pasy)', 'Size (fit + bars)'), size)
         form.addRow('FPS',fps); form.addRow('CRF',crf); form.addRow(test)
         notice = QLabel(self.tr_text('Napisy i logo zostaną wypalone. Wideo będzie ponownie kodowane.\nBez ręcznych czasów podświetlenie dzieli czas segmentu równo między słowa. Zmiana FPS konwertuje VFR na CFR.',
@@ -919,6 +1202,13 @@ class Window(QMainWindow):
         opts = dict(width=dimensions[0], height=dimensions[1], fps=fps.value(), crf=crf.value(), codec=['libx264','libx265','libvpx-vp9','libx264'][idx])
         if test.isChecked():
             opts['seconds'] = 10
+        if selected_range.isChecked():
+            start = self.project.range_start
+            end = self.project.range_end or self.info['duration']
+            if not 0 <= start < end <= self.info['duration']:
+                return self.error(self.tr_text('Ustaw poprawny zakres I–O w granicach filmu.', 'Set a valid In–Out range within the video.'))
+            opts['start'] = start/1000
+            opts['seconds'] = min(opts.get('seconds', (end-start)/1000), (end-start)/1000)
         self.start_export(target, opts)
 
     def start_export(self, target, opts):
@@ -1023,7 +1313,9 @@ class Window(QMainWindow):
             self.error(self.tr_text('Najpierw zakończ lub anuluj eksport.', 'Finish or cancel the export first.')); event.ignore(); return
         if not self.confirm_unsaved():
             event.ignore(); return
+        self._wave_cancel.set();self._media_request+=1
         self.autopath.unlink(missing_ok=True)
+        self.recovery.close()
         self.player.stop(); event.accept()
 
 
