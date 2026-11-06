@@ -10,13 +10,13 @@ Poprawki ochrony danych i synchronizacji z audytu, wspólny projekt obu kart, ak
 
 ## Zrzuty ekranu
 
-Lokalna transkrypcja filmu i edycja rozpoznanych napisów w module Szept.
+Ekran startowy z edytorem napisów i przewodnikiem „Krok po kroku”.
 
-![Transkrypcja filmu w module Szept z listą napisów i uwagami jakości](docs/screenshots/transkrypcja-szept.png)
+![Ekran startowy Subtitle Studio 0.7.0 z przyciskiem otwarcia filmu i przewodnikiem krok po kroku](docs/screenshots/edytor-filmu-i-napisow.png)
 
-Edycja filmu z napisami i logo, osią czasu, falą audio oraz eksportem.
+Kreator filmu ze zdjęcia lub klipu i osobnego nagrania audio.
 
-![Edytor filmu i napisów z podglądem, logo, osią czasu i postępem eksportu](docs/screenshots/edytor-filmu-i-napisow.png)
+![Kreator filmu z obrazu i audio z ustawieniami proporcji, rozmiaru i dopasowania obrazu](docs/screenshots/film-z-obrazu-i-audio.png)
 
 ## Integracja Szept — wersja 0.5.0
 
