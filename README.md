@@ -6,6 +6,16 @@ Poprawiono start transkrypcji z filmu, wybór plików wideo, zakres napisów wys
 
 Poprawki ochrony danych i synchronizacji z audytu, wspólny projekt obu kart, aktualizacja powiązanej ścieżki, naprawa czasów, edycja słów na fali audio, kolejka eksportów i pokaz zdjęć z muzyką. Dodano **lokalną korektę AI przez Ollamę** z podglądem i wyborem propozycji. [Nowości i obsługa](docs/NOWOSCI_0.6.md) · [Ollama](docs/OLLAMA.md).
 
+## Zrzuty ekranu
+
+Lokalna transkrypcja filmu i edycja rozpoznanych napisów w module Szept.
+
+![Transkrypcja filmu w module Szept z listą napisów i uwagami jakości](docs/screenshots/transkrypcja-szept.png)
+
+Edycja filmu z napisami i logo, osią czasu, falą audio oraz eksportem.
+
+![Edytor filmu i napisów z podglądem, logo, osią czasu i postępem eksportu](docs/screenshots/edytor-filmu-i-napisow.png)
+
 ## Integracja Szept — wersja 0.5.0
 
 Jedno okno zawiera karty **Film i napisy** oraz **Transkrypcja**. Lokalny Whisper, edytor tekstu, menedżer modeli i słowników pochodzą z Szept. Przyciski nad kartami przekazują film do transkrypcji oraz napisy w obie strony, zachowując poprawne czasy słów. [Instrukcja integracji](docs/INTEGRACJA_SZEPT.md). Połączone wydanie: GPL-3.0-or-later; pierwotna informacja MIT pozostaje w docs/SUBTITLE_STUDIO_MIT.txt.
