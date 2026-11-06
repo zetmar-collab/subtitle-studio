@@ -174,6 +174,34 @@ def test_cancel_blocked_renderer_read_kills_children(app,tmp_path,monkeypatch):
     timer.join();assert len(killed)==2 and not (tmp_path/'out.mp4').exists()
 
 
+@pytest.mark.parametrize('transient_lock',[False,True])
+def test_renderer_cleanup_waits_for_exited_children_before_removal(app,tmp_path,monkeypatch,transient_lock):
+    import io
+    from core.export import worker
+    children=[];waited=[];attempts=[]
+    class ExitedProcess:
+        def __init__(self,*args,**kwargs):
+            self.stdin=io.BytesIO();self.stdout=io.BytesIO();children.append(self)
+        def poll(self):return 0
+        def wait(self,**kwargs):waited.append(self);return 0
+    real_unlink=Path.unlink
+    def unlink(path,*args,**kwargs):
+        if path.name.startswith('.subtitle-'):
+            assert waited==children
+            assert all(child.stdin.closed and child.stdout.closed for child in children)
+            attempts.append(path)
+            if transient_lock and len(attempts)==1:raise PermissionError('Temporary Windows lock')
+        return real_unlink(path,*args,**kwargs)
+    monkeypatch.setattr(worker,'probe',lambda path:dict(width=96,height=64,duration=500,fps=10,streams=[]))
+    monkeypatch.setattr(worker.subprocess,'Popen',ExitedProcess)
+    monkeypatch.setattr(Path,'unlink',unlink)
+    target=tmp_path/'existing.mp4';target.write_bytes(b'preserve user file')
+    with pytest.raises(InterruptedError):
+        worker.render(Project(video='dummy'),target,dict(width=96,height=64,fps=10),cancelled=lambda:True)
+    assert len(attempts)==(2 if transient_lock else 1)
+    assert target.read_bytes()==b'preserve user file' and not list(tmp_path.glob('.subtitle-*'))
+
+
 def test_history_budget_and_image_cache_limits(app,tmp_path,monkeypatch):
     from core.projects.history import trim,byte_size
     from collections import OrderedDict

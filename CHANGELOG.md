@@ -1,5 +1,6 @@
 # 0.6.1
 
+- Usunięto wyścig przy anulowaniu eksportu na Windows: procesy i potoki są zamykane przed sprzątaniem, z krótkim ponowieniem blokady pliku tymczasowego.
 - Przycisk transkrypcji bieżącego filmu uruchamia ASR po analizie jego audio; wybór pliku w Szept obejmuje audio i wideo.
 - Ollama sprawdza domyślnie wszystkie napisy. Dodano wybór ścieżki, podgląd tekstu i licznik wysyłanego zakresu; ponowne otwarcie wybiera aktualną kartę.
 - Widoczny etap pracy modelu i opcjonalna dokładniejsza analiza dla modeli z reasoningiem; jawny komunikat o przekroczeniu limitu odpowiedzi.

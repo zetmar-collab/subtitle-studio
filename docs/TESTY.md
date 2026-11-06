@@ -1,6 +1,6 @@
 ## Weryfikacja 0.6.1
 
-200 testów zaliczonych, 1 opcjonalny test słownika pominięty. Ruff E9/F63/F7/F82 bez błędów. Pełny zestaw wykonano po poprawkach (102,23 s na bieżącym Windows).
+Próba przed publikacją: 200 testów zaliczonych, 1 opcjonalny test słownika pominięty (102,23 s na bieżącym Windows). Podczas kontroli w GitHub Actions wykryto wyścig przy sprzątaniu anulowanego eksportu na Windows. Dodano oczekiwanie na procesy, zamykanie potoków i krótkie ponowienie blokady pliku tymczasowego oraz dwie regresje. Pełny zestaw po tej poprawce obejmuje 203 przypadki, w tym jeden opcjonalny test słownika.
 
 Nowe regresje: przycisk filmu uruchamia ASR po analizie, filtr plików obejmuje wideo, podgląd odświeża czas przy przewijaniu, okno Ollamy wysyła cały zakres przez rzeczywisty osobny proces do lokalnego serwera testowego i po ponownym otwarciu wybiera bieżącą kartę. Sprawdzono stałość pozycji liter/słów/tła, czasy ASR, pauzy, nieaktualne wyrównanie, emoji i zawijanie długich słów. Eksport i zgodność pikseli obejmują wszystkie 9 efektów.
 

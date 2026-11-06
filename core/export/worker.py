@@ -13,6 +13,18 @@ from core.media.tools import probe, binary, FLAGS
 from core.compositor.render import compose
 
 
+def remove_temporary(path):
+    # Windows can briefly retain a file lock after a child exits (including
+    # background scanners). Retry only this app-created temporary file.
+    for attempt in range(20):
+        try:
+            path.unlink(missing_ok=True)
+            return
+        except PermissionError:
+            if attempt == 19:raise
+            time.sleep(.05)
+
+
 def render(project, target, options, progress=lambda p: None, cancelled=lambda: False):
     info = probe(project.video)
     start = float(options.get('start',0))
@@ -123,12 +135,20 @@ def render(project, target, options, progress=lambda p: None, cancelled=lambda: 
             progress(dict(percent=100, eta=0))
     finally:
         stopped.set()
-        for process in (decoder, encoder):
-            if process and process.poll() is None:
-                process.kill()
-                process.wait()
-        temp.unlink(missing_ok=True)
         watcher.join(timeout=2)
+        for process in (decoder, encoder):
+            if process:
+                if process.poll() is None:
+                    try:process.kill()
+                    except OSError:pass
+                # A concurrent monitor may already have killed the child. Always
+                # wait for its process handle before removing its output on Windows.
+                process.wait()
+                for stream in (process.stdin,process.stdout):
+                    if stream:
+                        try:stream.close()
+                        except OSError:pass
+        remove_temporary(temp)
 
 
 def main(args):

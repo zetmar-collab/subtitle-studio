@@ -43,6 +43,6 @@ Plik `.exports.json` jest zapisywany po zmianie stanu zadania. Jego lokalizacja 
 
 ## Odtwarzalne środowisko i testy
 
-Zależności produkcyjne są zamknięte w `requirements-lock.txt` z hashami. Bootstrap Online instaluje je z `--require-hashes`. Definicja CI Windows sprawdza testy, wybrane błędy Ruff i zależności. Plik workflow jest przygotowany lokalnie; nie został wysłany na GitHub ani uruchomiony jako zdalny workflow.
+Zależności produkcyjne są zamknięte w `requirements-lock.txt` z hashami. Bootstrap Online instaluje je z `--require-hashes`. Definicja CI Windows sprawdza testy, wybrane błędy Ruff i zależności. Od publikacji 0.6.1 workflow działa także w [GitHub Actions](https://github.com/zetmar-collab/subtitle-studio/actions/workflows/check.yml).
 
 Budowanie może użyć izolowanego Pythona: `powershell -File scripts/build.ps1 -Python .venv/Scripts/python.exe`. Bieżące wyniki testów i zakres sprawdzenia opisuje [TESTY.md](TESTY.md).
