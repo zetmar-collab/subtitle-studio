@@ -1,5 +1,5 @@
 #define MyAppName "Subtitle Studio"
-#define MyAppVersion "0.6.1"
+#define MyAppVersion "0.7.0"
 #ifndef SourceRoot
   #define SourceRoot "..\build\public-installer-source"
 #endif

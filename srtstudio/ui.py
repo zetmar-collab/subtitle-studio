@@ -731,7 +731,8 @@ class Window(QMainWindow):
             if col not in (1, 2):
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             if col == 4 and (errors or warnings):
-                item.setForeground(QColor("#f34b62" if errors else "#be8b34"))
+                dark = self.palette().window().color().lightness() < 128
+                item.setForeground(QColor(("#ff91a0" if errors else "#f0c06c") if dark else ("#b4233b" if errors else "#845200")))
             item.setToolTip(text)
             self.table.setItem(index, col, item)
         self.rendering = old

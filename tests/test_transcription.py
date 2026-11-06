@@ -145,5 +145,9 @@ def test_workspace_transfer_undo_close_and_real_probe(app, monkeypatch, tmp_path
         monkeypatch.setattr(speech, 'confirm_save', lambda: True)
         workspace.close()
         app.processEvents()
-    assert not speech.poll_timer.isActive()
+    from shiboken6 import isValid
+    # Closing the workspace now also releases its Qt children, rather than
+    # leaving the hidden window and its timers alive until Python shuts down.
+    assert not isValid(speech.poll_timer) or not speech.poll_timer.isActive()
+    assert speech.spell_process is None
     assert not speech.autosave_path().exists()

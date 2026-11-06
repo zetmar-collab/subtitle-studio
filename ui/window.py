@@ -7,14 +7,14 @@ import sys
 import tempfile
 import time
 import threading
-from PySide6.QtCore import Qt, QUrl, QTimer, QProcess, QThreadPool, QStandardPaths, QTranslator, QCoreApplication, QRectF, QLibraryInfo, QItemSelectionModel, QEvent
-from PySide6.QtGui import QAction, QKeySequence, QImage, QColor, QIcon
+from PySide6.QtCore import Qt, QUrl, QTimer, QProcess, QThreadPool, QStandardPaths, QTranslator, QCoreApplication, QRectF, QLibraryInfo, QItemSelectionModel, QEvent, Signal, QSettings
+from PySide6.QtGui import QAction, QKeySequence, QImage, QColor, QIcon, QDesktopServices
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QVideoSink
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QSplitter,
     QPushButton, QLabel, QListWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
     QSpinBox, QDoubleSpinBox, QCheckBox, QLineEdit, QFileDialog, QMessageBox, QInputDialog,
     QSlider, QDialog, QDialogButtonBox, QProgressBar, QGroupBox, QScrollArea, QTextEdit, QColorDialog,
-    QApplication, QAbstractSpinBox)
+    QApplication, QAbstractSpinBox, QMenu, QToolButton)
 from core.projects.model import Project, Track, Segment, Logo, Style, save, load
 from core.subtitles.service import read, write, shift, stretch, warnings
 from core.media.tools import probe
@@ -32,6 +32,8 @@ ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parents[1]))
 
 
 class Window(QMainWindow):
+    interfaceChanged = Signal()
+
     def __init__(self):
         super().__init__()
         self.project = Project()
@@ -50,6 +52,7 @@ class Window(QMainWindow):
         self.active_track = 0
         self.active_logo = -1
         self.translated = []
+        self.ui_settings = QSettings('LocalTools', 'SubtitleStudioInterface')
         self.store = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation))
         self.store.mkdir(parents=True, exist_ok=True)
         self.recovery = RecoverySession(self.store, 'editor', 'recovery.autosave.json')
@@ -102,11 +105,24 @@ class Window(QMainWindow):
         self.addAction(a)
         return a
 
+    def menu_button(self, pl, en, entries, layout):
+        button = self.text(QPushButton(), pl, en)
+        menu = QMenu(button)
+        for label, english, callback in entries:
+            action = self.text(QAction(menu), label, english)
+            action.triggered.connect(callback)
+            menu.addAction(action)
+        button.setMenu(menu)
+        layout.addWidget(button)
+        return button
+
     def build(self):
-        help_menu = self.menuBar().addMenu('Pomoc / Help')
+        help_menu = self.menuBar().addMenu('Pomoc')
+        self.translated.append((help_menu.menuAction(), 'Pomoc', 'Help'))
         help_menu.addAction(self.action('O aplikacji i licencjach', 'About and licenses', 'F1', self.about))
         toolbar = self.addToolBar('Project')
         toolbar.setMovable(False)
+        more_menu = QMenu(self)
         for pl, en, key, cb in [('Nowy projekt', 'New project', 'Ctrl+N', self.new_project),
                                 ('Otwórz film', 'Open video', 'Ctrl+O', self.open_video),
                                 ('Importuj napisy', 'Import subtitles', 'Ctrl+I', self.import_subtitles),
@@ -115,7 +131,14 @@ class Window(QMainWindow):
                                 ('Zapisz projekt', 'Save project', 'Ctrl+S', self.save_project),
                                 ('Eksportuj napisy', 'Export subtitles', 'Ctrl+Shift+S', self.export_subtitles),
                                 ('Eksportuj film', 'Export video', 'Ctrl+E', self.export_video)]:
-            toolbar.addAction(self.action(pl, en, key, cb))
+            action = self.action(pl, en, key, cb)
+            if pl in ('Nowy projekt', 'Otwórz projekt', 'Eksportuj napisy'):
+                more_menu.addAction(action)
+            else:
+                toolbar.addAction(action)
+                if pl == 'Eksportuj film':
+                    self.export_action = action
+                    toolbar.widgetForAction(action).setObjectName('primary')
         self.action('Cofnij', 'Undo', 'Ctrl+Z', self.undo)
         self.action('Ponów', 'Redo', 'Ctrl+Y', self.redo)
         self.action('Odtwarzaj / pauza', 'Play / pause', 'Space', lambda: self.navigate(self.play))
@@ -132,19 +155,27 @@ class Window(QMainWindow):
         self.action('Pomniejsz oś', 'Zoom timeline out', 'Ctrl+-', lambda: self.timeline.set_zoom(self.timeline.zoom/1.5))
         self.action('Początek zakresu', 'Range start', 'I', lambda: self.navigate(lambda: self.range_in.setValue(self.player.position())))
         self.action('Koniec zakresu', 'Range end', 'O', lambda: self.navigate(lambda: self.range_out.setValue(self.player.position())))
-        toolbar.addAction(self.action('Połącz filmy', 'Join videos', 'Ctrl+J', self.join_videos))
-        toolbar.addAction(self.action('Obraz + audio', 'Visual + audio', 'Ctrl+Shift+V', self.create_video))
+        more_menu.addAction(self.action('Połącz filmy', 'Join videos', 'Ctrl+J', self.join_videos))
+        more_menu.addAction(self.action('Obraz + audio', 'Visual + audio', 'Ctrl+Shift+V', self.create_video))
+        more = self.text(QToolButton(), 'Więcej', 'More')
+        more.setMenu(more_menu)
+        more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        toolbar.addWidget(more)
         self.action('Pełny ekran', 'Full screen', 'F11', lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen())
         central = QWidget()
         root = QVBoxLayout(central)
         root.setContentsMargins(16, 10, 16, 12)
         top = QHBoxLayout()
+        self.brand_bar = QWidget()
+        brand_layout = QHBoxLayout(self.brand_bar)
+        brand_layout.setContentsMargins(0, 0, 0, 0)
         brand = QLabel()
         brand.setPixmap(self.windowIcon().pixmap(36,36))
-        top.addWidget(brand)
+        brand_layout.addWidget(brand)
         title = QLabel('SUBTITLE <span style="color:#9b9eff">STUDIO</span>')
         title.setStyleSheet('font-size:22px; font-weight:700; padding:8px 0')
-        top.addWidget(title)
+        brand_layout.addWidget(title)
+        top.addWidget(self.brand_bar)
         top.addStretch()
         self.lang = QComboBox()
         self.lang.addItems(['Polski', 'English'])
@@ -154,6 +185,11 @@ class Window(QMainWindow):
         self.theme.addItems(['Ciemny / Dark', 'Jasny / Light', 'System'])
         self.theme.currentIndexChanged.connect(self.change_theme)
         top.addWidget(self.theme)
+        self.interface_size = QComboBox()
+        self.interface_size.addItems(['100%', '115%', '130%'])
+        self.interface_size.setCurrentIndex(max(0, self.interface_size.findText(str(self.ui_settings.value('scale', '100%')))))
+        self.interface_size.currentIndexChanged.connect(self.change_interface_size)
+        top.addWidget(self.interface_size)
         root.addLayout(top)
         upper = QSplitter(Qt.Orientation.Horizontal)
         left = QWidget()
@@ -176,11 +212,24 @@ class Window(QMainWindow):
         self.preview = Preview()
         self.preview.project = self.project
         self.preview.moved.connect(self.move_layer)
+        self.welcome = QWidget()
+        welcome_layout = QVBoxLayout(self.welcome)
+        welcome_layout.addWidget(self.text(QLabel(), 'Dodaj napisy do swojego filmu', 'Add captions to your video'))
+        hint = self.text(QLabel(), 'Otwórz film, rozpoznaj mowę, popraw tekst i zapisz gotowy film.',
+                         'Open a video, recognize speech, review the text and export your video.')
+        hint.setWordWrap(True)
+        welcome_layout.addWidget(hint)
+        self.button('Otwórz film', 'Open video', self.open_video, welcome_layout).setObjectName('primary')
+        cl.addWidget(self.welcome)
         cl.addWidget(self.preview, 1)
         transport = QHBoxLayout()
-        self.button('◀', '◀', lambda: self.step(-1), transport)
-        self.button('▶ / Ⅱ', '▶ / Ⅱ', self.play, transport)
-        self.button('▶', '▶', lambda: self.step(1), transport)
+        self.transport_buttons = []
+        for symbol, pl, en, callback in [
+                ('|◀', 'Poprzednia klatka', 'Previous frame', lambda: self.step(-1)),
+                ('▶ / Ⅱ', 'Odtwórz / wstrzymaj', 'Play / pause', self.play),
+                ('▶|', 'Następna klatka', 'Next frame', lambda: self.step(1))]:
+            button = self.button(symbol, symbol, callback, transport)
+            self.transport_buttons.append((button, pl, en))
         self.clock = QLabel('00:00:00.000')
         transport.addWidget(self.clock)
         transport.addStretch()
@@ -199,9 +248,13 @@ class Window(QMainWindow):
         upper.addWidget(center)
         props = QWidget()
         form = QFormLayout(props)
+        self.properties_form = form
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         form.setContentsMargins(12, 0, 0, 0)
         def row(pl, en, widget):
             label = self.text(QLabel(), pl, en)
+            label.setBuddy(widget)
             form.addRow(label, widget)
         self.presets = QComboBox()
         self.presets.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
@@ -211,11 +264,11 @@ class Window(QMainWindow):
         self.presets.activated.connect(self.apply_preset)
         row('Szablon', 'Preset', self.presets)
         b = QPushButton()
-        self.text(b, 'Zapisz własny preset', 'Save custom preset')
+        self.text(b, 'Zapisz własny styl', 'Save custom style')
         b.clicked.connect(self.save_preset)
         form.addRow(b)
         b = QPushButton()
-        self.text(b, 'Wczytaj preset JSON', 'Load JSON preset')
+        self.text(b, 'Wczytaj styl…', 'Load style…')
         b.clicked.connect(self.load_preset)
         form.addRow(b)
         self.font_combo = QComboBox()
@@ -225,7 +278,7 @@ class Window(QMainWindow):
         self.font_combo.addItems(QFontDatabase.families())
         row('Czcionka', 'Font', self.font_combo)
         self.size = QSpinBox(); self.size.setRange(8, 300)
-        row('Rozmiar / 1080p', 'Size / 1080p', self.size)
+        row('Rozmiar tekstu', 'Text size', self.size)
         self.bold = QCheckBox()
         row('Pogrubienie', 'Bold', self.bold)
         self.color = ColorButton()
@@ -263,7 +316,7 @@ class Window(QMainWindow):
         row('Pozycja X', 'Position X', self.x)
         row('Pozycja Y', 'Position Y', self.y)
         self.logo_width = QDoubleSpinBox(); self.logo_width.setRange(1, 100); self.logo_width.setSuffix('%')
-        row('Szerokość logo / film', 'Logo width / video', self.logo_width)
+        row('Szerokość logo (%)', 'Logo width (%)', self.logo_width)
         self.logo_slider = QSlider(Qt.Orientation.Horizontal); self.logo_slider.setRange(1,100)
         self.logo_slider.valueChanged.connect(self.logo_width.setValue)
         self.logo_width.valueChanged.connect(lambda v: self.logo_slider.setValue(round(v)))
@@ -272,7 +325,8 @@ class Window(QMainWindow):
         self.opacity_label = QLabel('100%')
         opacity_box = QWidget(); ol = QHBoxLayout(opacity_box); ol.setContentsMargins(0,0,0,0)
         ol.addWidget(self.opacity); ol.addWidget(self.opacity_label)
-        row('Krycie logo', 'Logo opacity', opacity_box)
+        self.opacity_box = opacity_box
+        row('Widoczność logo (%)', 'Logo opacity (%)', opacity_box)
         self.logo_start = QSpinBox(); self.logo_start.setRange(0, 2147483647)
         self.logo_end = QSpinBox(); self.logo_end.setRange(0, 2147483647)
         row('Logo początek ms', 'Logo start ms', self.logo_start)
@@ -289,21 +343,24 @@ class Window(QMainWindow):
         vertical.addWidget(upper)
         lower = QWidget(); lo = QVBoxLayout(lower); lo.setContentsMargins(0,8,0,0)
         controls = QHBoxLayout()
-        self.button('+ Segment', '+ Segment', self.add_segment, controls)
+        self.button('Dodaj napis', 'Add caption', self.add_segment, controls)
         self.button('Usuń', 'Delete', self.delete_segment, controls)
         self.button('Podziel', 'Split', self.split_segment, controls)
         self.button('Połącz', 'Merge', self.merge_segments, controls)
-        self.button('Początek ◷', 'Start ◷', lambda: self.set_time(True), controls)
-        self.button('Koniec ◷', 'End ◷', lambda: self.set_time(False), controls)
-        self.button('Przesuń ms', 'Shift ms', self.shift_dialog, controls)
-        self.button('Dwa punkty', 'Two anchors', self.stretch_dialog, controls)
-        self.button('Słowa', 'Word timing', self.words_dialog, controls)
-        self.button('Pisownia', 'Spelling', self.spelling, controls)
-        self.button('Znajdź / zamień', 'Find / replace', self.replace, controls)
-        self.button('QC', 'QC', self.quality_dialog, controls)
+        self.menu_button('Synchronizacja', 'Timing', [
+            ('Ustaw początek w miejscu odtwarzania', 'Set start at playhead', lambda: self.set_time(True)),
+            ('Ustaw koniec w miejscu odtwarzania', 'Set end at playhead', lambda: self.set_time(False)),
+            ('Przesuń napisy w czasie…', 'Shift caption timing…', self.shift_dialog),
+            ('Dopasuj do dwóch punktów…', 'Align using two points…', self.stretch_dialog),
+            ('Czasy poszczególnych słów…', 'Word timing…', self.words_dialog)], controls)
+        self.menu_button('Sprawdzanie', 'Review', [
+            ('Sprawdź pisownię', 'Check spelling', self.spelling),
+            ('Znajdź i zamień…', 'Find and replace…', self.replace),
+            ('Sprawdź napisy', 'Check captions', self.quality_dialog)], controls)
+        controls.addStretch()
         lo.addLayout(controls)
         self.table = QTableWidget(0, 6)
-        self.table.setMinimumHeight(130)
+        self.table.setMinimumHeight(100)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
@@ -338,9 +395,10 @@ class Window(QMainWindow):
         self.timeline_scroll = QScrollArea()
         self.timeline_scroll.setWidgetResizable(True)
         self.timeline_scroll.setWidget(self.timeline)
-        self.timeline_scroll.setMinimumHeight(150)
+        self.timeline_scroll.setMinimumHeight(100)
         lo.addWidget(self.timeline_scroll)
-        edit_menu = self.menuBar().addMenu('Montaż / Edit')
+        edit_menu = self.menuBar().addMenu('Montaż')
+        self.translated.append((edit_menu.menuAction(), 'Montaż', 'Edit'))
         edit_menu.addAction(self.action('Duplikuj napisy', 'Duplicate subtitles', '', self.duplicate_segments))
         edit_menu.addAction(self.action('Usuń i domknij napisy', 'Ripple delete subtitles', '', self.ripple_segments))
         vertical.addWidget(lower); vertical.setSizes([450, 400])
@@ -350,10 +408,26 @@ class Window(QMainWindow):
         self.eta = QLabel(); el.addWidget(self.eta)
         self.button('Anuluj eksport', 'Cancel export', self.cancel_export, el)
         self.exportbar.hide(); root.addWidget(self.exportbar)
-        self.setCentralWidget(central)
+        self.export_result = QWidget()
+        result_layout = QHBoxLayout(self.export_result)
+        self.export_result_label = QLabel()
+        result_layout.addWidget(self.export_result_label, 1)
+        self.button('Otwórz film', 'Open video', lambda: self.open_export(False), result_layout)
+        self.button('Pokaż w folderze', 'Show in folder', lambda: self.open_export(True), result_layout)
+        self.export_result.hide()
+        root.addWidget(self.export_result)
+        self.editor_scroll = QScrollArea()
+        self.editor_scroll.setWidgetResizable(True)
+        self.editor_scroll.setWidget(central)
+        self.setCentralWidget(self.editor_scroll)
 
     def error(self, message):
-        QMessageBox.warning(self, 'Subtitle Studio', str(message))
+        from ui.appearance import show_error
+        show_error(self, 'Subtitle Studio', message, self.tr_text)
+
+    def open_export(self, folder=False):
+        target = Path(self.export_target)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(target.parent if folder else target)))
 
     def about(self):
         QMessageBox.information(self,f'Subtitle Studio {VERSION}',self.tr_text(
@@ -370,6 +444,54 @@ class Window(QMainWindow):
         trim(self)
         self.dirty = True
         self.update_title()
+
+    def update_interface(self):
+        self.export_action.setEnabled(bool(self.project.video) and self.export_process is None)
+        for obj, pl, en in self.translated:
+            obj.setText(self.tr_text(pl, en))
+        for button, pl, en in self.transport_buttons:
+            name = self.tr_text(pl, en)
+            button.setAccessibleName(name)
+            button.setToolTip(name)
+        for widget, pl, en in [(self.volume, 'Głośność', 'Volume'),
+                              (self.scrub, 'Pozycja odtwarzania', 'Playback position'),
+                              (self.lang, 'Język interfejsu', 'Interface language'),
+                              (self.theme, 'Motyw interfejsu', 'Interface theme'),
+                              (self.interface_size, 'Rozmiar interfejsu', 'Interface size'),
+                              (self.opacity, 'Widoczność logo', 'Logo opacity'),
+                              (self.logo_slider, 'Szerokość logo', 'Logo width'),
+                              (self.range_in, 'Początek zakresu w milisekundach', 'Range start in milliseconds'),
+                              (self.range_out, 'Koniec zakresu w milisekundach', 'Range end in milliseconds')]:
+            widget.setAccessibleName(self.tr_text(pl, en))
+            widget.setToolTip(self.tr_text(pl, en))
+        self.theme.blockSignals(True)
+        for index, (pl, en) in enumerate([('Ciemny', 'Dark'), ('Jasny', 'Light'), ('Systemowy', 'System')]):
+            self.theme.setItemText(index, self.tr_text(pl, en))
+        self.theme.blockSignals(False)
+        self.effect.blockSignals(True)
+        for index in range(self.effect.count()):
+            labels = self.effect.itemText(index).split(' / ', 1)
+            if len(labels) == 2:
+                self.effect.setItemData(index, labels, Qt.ItemDataRole.UserRole + 1)
+            labels = self.effect.itemData(index, Qt.ItemDataRole.UserRole + 1)
+            if labels:
+                self.effect.setItemText(index, labels[0 if self.project.language == 'pl' else 1])
+        self.effect.blockSignals(False)
+        for index, (pl, en) in enumerate([
+                ('Lewy górny róg', 'Top left'), ('Góra', 'Top'), ('Prawy górny róg', 'Top right'),
+                ('Lewa', 'Left'), ('Środek', 'Center'), ('Prawa', 'Right'),
+                ('Lewy dolny róg', 'Bottom left'), ('Dół', 'Bottom'), ('Prawy dolny róg', 'Bottom right')]):
+            self.anchors.setItemText(index, self.tr_text(pl, en))
+        self.presets.blockSignals(True)
+        for index, preset in enumerate(self.preset_data):
+            labels = preset['name'].split(' / ', 1)
+            self.presets.setItemText(index, labels[0] if self.project.language == 'pl' else labels[-1])
+        self.presets.blockSignals(False)
+        self.table.setAccessibleName(self.tr_text('Napisy i czasy wyświetlania', 'Captions and timing'))
+        self.layers.setAccessibleName(self.tr_text('Pliki i warstwy', 'Files and layers'))
+        self.timeline.setAccessibleName(self.tr_text('Oś czasu napisów; czasy możesz także edytować w tabeli',
+                                                       'Caption timeline; timings can also be edited in the table'))
+        self.interfaceChanged.emit()
 
     def update_title(self):
         self.setWindowTitle(('● ' if self.dirty else '')+'Subtitle Studio — '+(Path(self.path).stem if self.path else self.tr_text('Nowy projekt', 'New project')))
@@ -414,13 +536,15 @@ class Window(QMainWindow):
 
     def refresh(self):
         self.loading = True
+        self.welcome.setVisible(not self.project.video)
+        self.preview.setVisible(bool(self.project.video))
         selected = self.selected()
         self.active_track = min(self.active_track, len(self.project.tracks)-1)
         self.active_logo = min(self.active_logo, len(self.project.logos)-1)
         self.preview.project = self.project
         self.timeline.project = self.project
         self.layers.clear()
-        self.layers.addItem('🎬 '+(Path(self.project.video).name if self.project.video else self.tr_text('Brak filmu', 'No video')))
+        self.layers.addItem(Path(self.project.video).name if self.project.video else self.tr_text('Brak filmu', 'No video'))
         for t in self.project.tracks:
             self.layers.addItem(('● ' if t.visible else '○ ')+t.name)
         for l in self.project.logos:
@@ -446,12 +570,13 @@ class Window(QMainWindow):
                 if j >= 4:
                     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 if j == 5:
-                    item.setForeground(QColor('#dfaa65') if val else self.palette().text())
+                    warning_color = '#f0c06c' if self.palette().window().color().lightness() < 128 else '#845200'
+                    item.setForeground(QColor(warning_color) if val else self.palette().text())
         self.lang.setCurrentIndex(0 if self.project.language == 'pl' else 1)
         self.theme.setCurrentIndex(['dark','light','system'].index(self.project.theme))
         self.range_in.setValue(self.project.range_start)
         self.range_out.setValue(self.project.range_end or self.info['duration'])
-        self.timeline.setMinimumHeight(max(130,100+24*len(self.project.tracks)))
+        self.timeline.setMinimumHeight(max(100,80+24*len(self.project.tracks)))
         self.table.clearSelection()
         for row in selected:
             if row < self.table.rowCount():
@@ -460,6 +585,7 @@ class Window(QMainWindow):
         self.show_properties()
         self.preview.update(); self.timeline.update()
         self.update_title()
+        self.update_interface()
 
     def select_layer(self, row):
         if self.loading:
@@ -488,6 +614,16 @@ class Window(QMainWindow):
         for widget in (self.logo_width, self.logo_slider, self.opacity, self.logo_start, self.logo_end):
             widget.setEnabled(self.active_logo >= 0)
         self.opacity_label.setText(f'{self.opacity.value()}%')
+        common = (self.anchors, self.x, self.y)
+        logo = (self.logo_width, self.logo_slider, self.opacity_box, self.logo_start, self.logo_end)
+        for row in range(self.properties_form.rowCount()):
+            item = self.properties_form.itemAt(row, QFormLayout.ItemRole.FieldRole)
+            widget = item.widget() if item else None
+            self.properties_form.setRowVisible(row, widget in common or
+                (widget in logo if self.active_logo >= 0 else widget not in logo))
+            label = self.properties_form.itemAt(row, QFormLayout.ItemRole.LabelRole)
+            if widget and label and label.widget():
+                widget.setAccessibleName(label.widget().text())
         self.loading = False
 
     def properties_changed(self, *args):
@@ -1173,21 +1309,10 @@ class Window(QMainWindow):
             return self.error(self.tr_text('Eksport już trwa.', 'Export is already running.'))
         if not self.project.video:
             return self.error(self.tr_text('Najpierw otwórz film.', 'Open a video first.'))
-        dialog = QDialog(self); dialog.setWindowTitle(self.tr_text('Eksportuj film', 'Export video')); form = QFormLayout(dialog)
-        profile = QComboBox(); profile.addItems(['MP4 · H.264 / AAC', 'MP4 · H.265 / AAC', 'WebM · VP9 / Opus', 'MKV · H.264 / AAC'])
-        size = QComboBox(); size.addItems(['Source', '1920 × 1080', '3840 × 2160', '1080 × 1920', '1080 × 1080'])
-        fps = QDoubleSpinBox(); fps.setRange(1,120); fps.setDecimals(3); fps.setValue(min(120,self.info['fps']))
-        crf = QSpinBox(); crf.setRange(0,51); crf.setValue(20)
-        test = QCheckBox(self.tr_text('Tylko pierwsze 10 sekund', 'First 10 seconds only'))
-        selected_range = QCheckBox(self.tr_text('Eksportuj zakres I–O', 'Export In–Out range'))
-        form.addRow(selected_range)
-        form.addRow(self.tr_text('Profil', 'Profile'), profile); form.addRow(self.tr_text('Rozmiar (dopasuj + pasy)', 'Size (fit + bars)'), size)
-        form.addRow('FPS',fps); form.addRow('CRF',crf); form.addRow(test)
-        notice = QLabel(self.tr_text('Napisy i logo zostaną wypalone. Wideo będzie ponownie kodowane.\nBez ręcznych czasów podświetlenie dzieli czas segmentu równo między słowa. Zmiana FPS konwertuje VFR na CFR.',
-                                    'Subtitles and logos will be burned in. Video will be re-encoded.\nWithout manual timing, each word gets an equal share of the segment. FPS selection converts VFR to CFR.'))
-        notice.setWordWrap(True); form.addRow(notice)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject); form.addRow(buttons)
+        from ui.export_dialog import ExportDialog
+        dialog = ExportDialog(self)
+        profile, size, fps, crf = dialog.profile, dialog.size, dialog.fps, dialog.crf
+        test, selected_range = dialog.test, dialog.selected_range
         if not dialog.exec():
             return
         idx = profile.currentIndex(); suffix = ['mp4','mp4','webm','mkv'][idx]
@@ -1212,6 +1337,9 @@ class Window(QMainWindow):
         self.start_export(target, opts)
 
     def start_export(self, target, opts):
+        self.export_target = str(Path(target).resolve())
+        self.export_result.hide()
+        self.export_action.setEnabled(False)
         self.export_temp = tempfile.TemporaryDirectory(prefix='subtitle-job-')
         folder = Path(self.export_temp.name)
         save(self.project, folder/'project.json')
@@ -1227,7 +1355,7 @@ class Window(QMainWindow):
         else:
             self.export_process.start(sys.executable, [str(ROOT/'main.py')]+args)
         self.progress.setValue(0); self.exportbar.show()
-        self.statusBar().showMessage(self.tr_text('Renderowanie w osobnym procesie…', 'Rendering in a separate process…'))
+        self.statusBar().showMessage(self.tr_text('Zapisywanie filmu… Możesz dalej przeglądać napisy.', 'Exporting video… You can keep reviewing captions.'))
 
     def export_error(self, error):
         if self.export_process and error == QProcess.ProcessError.FailedToStart:
@@ -1238,7 +1366,8 @@ class Window(QMainWindow):
             try:
                 status = json.loads(self.export_status.read_text(encoding='utf-8'))
                 self.progress.setValue(status.get('percent', self.progress.value()))
-                self.eta.setText(f"ETA {status.get('eta', 0)} s")
+                seconds = max(0, round(status.get('eta', 0)))
+                self.eta.setText(self.tr_text(f'Pozostało około {seconds} s', f'About {seconds} s remaining'))
             except (OSError, ValueError):
                 pass
 
@@ -1254,10 +1383,25 @@ class Window(QMainWindow):
             result = {}
         self.exportbar.hide()
         process = self.export_process; self.export_process = None
-        if code or not result.get('done'):
-            self.error(result.get('error', self.tr_text('Nie udało się uruchomić renderowania.', 'Renderer failed to start.')))
+        self.export_action.setEnabled(bool(self.project.video))
+        if self.export_cancel.exists() and not result.get('done'):
+            self.statusBar().showMessage(self.tr_text('Eksport anulowany. Możesz uruchomić go ponownie.', 'Export cancelled. You can start it again.'))
+        elif code or not result.get('done'):
+            box = QMessageBox(self)
+            box.setWindowTitle(self.tr_text('Nie udało się zapisać filmu', 'Video export failed'))
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.setText(self.tr_text('Sprawdź wolne miejsce i dostęp do folderu docelowego. Następnie spróbuj ponownie.',
+                                    'Check free disk space and access to the destination folder, then try again.'))
+            box.setDetailedText(str(result.get('error', 'Renderer failed to start.')))
+            retry = box.addButton(self.tr_text('Spróbuj ponownie…', 'Try again…'), QMessageBox.ButtonRole.ActionRole)
+            box.addButton(QMessageBox.StandardButton.Close)
+            box.finished.connect(lambda: QTimer.singleShot(0, self.export_video) if box.clickedButton() == retry else None)
+            box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+            box.open()
         else:
-            self.statusBar().showMessage(self.tr_text('Film wyeksportowany i sprawdzony przez ffprobe.', 'Video exported and verified with ffprobe.'),20000)
+            self.export_result_label.setText(self.tr_text('Film zapisany: ', 'Video saved: ') + Path(self.export_target).name)
+            self.export_result.show()
+            self.statusBar().showMessage(self.tr_text('Film zapisany.', 'Video saved.'),20000)
         process.deleteLater()
         self.export_temp.cleanup(); self.export_temp = None
 
@@ -1274,23 +1418,22 @@ class Window(QMainWindow):
         if not self.loading:
             self.checkpoint(); self.project.theme = ['dark','light','system'][index]; self.apply_theme()
 
+    def interface_font_size(self):
+        return [14, 16, 18][self.interface_size.currentIndex()]
+
+    def change_interface_size(self, index):
+        self.ui_settings.setValue('scale', self.interface_size.currentText())
+        self.apply_theme()
+
     def apply_theme(self):
-        dark = self.project.theme == 'dark'
-        if self.project.theme == 'system':
-            from PySide6.QtWidgets import QApplication
-            dark = QApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
-        bg, panel, fg, border = ('#10141d','#1a2130','#e9edf5','#30394c') if dark else ('#eef1f7','#ffffff','#202638','#ced5e2')
-        self.setStyleSheet(f'''QMainWindow,QWidget {{ background:{bg}; color:{fg}; font-family:Segoe UI; font-size:12px; }}
-            QTableWidget,QListWidget,QComboBox,QLineEdit,QSpinBox,QDoubleSpinBox,QTextEdit {{ background:{panel}; border:1px solid {border}; border-radius:5px; padding:4px; selection-background-color:#6267ca; }}
-            QPushButton {{ background:{panel}; border:1px solid {border}; border-radius:6px; padding:7px 10px; }}
-            QPushButton:hover {{ border-color:#9599ff; background:#434779; color:white; }}
-            QToolBar {{ background:{panel}; border:0; spacing:10px; padding:8px; }}
-            QHeaderView::section {{ background:{panel}; padding:7px; border:0; border-bottom:1px solid {border}; }}
-            QProgressBar {{ border:1px solid {border}; text-align:center; border-radius:4px; }}
-            QProgressBar::chunk {{ background:#777cee; }}
-            QSplitter::handle {{ background:{border}; }}
-            QSlider::groove:horizontal {{ background:{border}; height:4px; }}
-            QSlider::handle:horizontal {{ background:#a4a7ff; width:12px; margin:-5px 0; border-radius:6px; }}''')
+        from ui.appearance import apply_appearance
+        apply_appearance(self, self.project.theme, self.interface_font_size())
+        warning = '#f0c06c' if self.palette().window().color().lightness() < 128 else '#845200'
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, 5)
+            if item:
+                item.setForeground(QColor(warning) if item.text() else self.palette().text())
+        self.interfaceChanged.emit()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():

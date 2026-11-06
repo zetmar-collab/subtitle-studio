@@ -13,7 +13,9 @@ import json
 class Workspace(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.editor = Window()
+        self.editor.brand_bar.hide()
         self.transcription = None
         self.editor.before_save = self.capture_session
         self.editor.session_dirty = lambda: bool(self.transcription and self.transcription.dirty)
@@ -27,37 +29,45 @@ class Workspace(QMainWindow):
         self.queue = None
         self.editor.setWindowFlags(Qt.WindowType.Widget)
         self.setWindowIcon(self.editor.windowIcon())
-        self.setWindowTitle('Subtitle Studio + Szept')
-        self.resize(1540, 1020)
+        self.setWindowTitle('Subtitle Studio')
+        self.resize(1366, 820)
         root = QWidget()
         layout = QVBoxLayout(root)
         layout.setContentsMargins(4, 4, 4, 4)
         bar = QHBoxLayout()
+        brand = QLabel('Subtitle Studio')
+        brand.setObjectName('brand')
+        bar.addWidget(brand)
+        self.flow_buttons = []
         for label, callback in [
-            ('Transkrybuj bieżący film / Transcribe video', self.transcribe_video),
-            ('Napisy → transkrypcja / Edit transcript', self.send_to_transcript),
-            ('Transkrypcja → film / Send captions to video', self.send_to_editor),
-            ('Pisownia AI · Ollama',self.show_ai),
+            ('Rozpoznaj mowę / Recognize speech', self.transcribe_video),
+            ('Edytuj tekst / Edit text', self.send_to_transcript),
+            ('Zastosuj napisy / Apply captions', self.send_to_editor),
+            ('Korekta AI / AI proofreading',self.show_ai),
+            ('Krok po kroku / Step by step',self.show_workflow),
         ]:
             button = QPushButton(label)
+            self.localize(button, label)
             button.clicked.connect(callback)
             bar.addWidget(button)
+            self.flow_buttons.append(button)
         bar.addStretch()
         layout.addLayout(bar)
         self.tabs = QTabWidget()
-        self.tabs.addTab(self.editor, 'Film i napisy / Video editor')
+        self.tabs.addTab(self.editor, 'Film i napisy')
         placeholder = QWidget()
         empty = QVBoxLayout(placeholder)
-        hint = QLabel('Szept — lokalna transkrypcja, edytor tekstu i słowniki.\n'
-                      'Szept — local transcription, text editor and dictionaries.')
+        hint = QLabel()
+        hint.setText(self.editor.tr_text('Tutaj rozpoznasz mowę i poprawisz tekst napisów.', 'Recognize speech and review caption text here.'))
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty.addWidget(hint)
-        self.tabs.addTab(placeholder, 'Transkrypcja / Transcription')
+        self.tabs.addTab(placeholder, 'Rozpoznawanie mowy')
         self.tabs.currentChanged.connect(self.switch_tab)
         layout.addWidget(self.tabs, 1)
         self.setCentralWidget(root)
-        self.editor.windowTitleChanged.connect(lambda title: self.setWindowTitle(title + ' + Szept'))
-        project_menu=self.menuBar().addMenu('Projekt / Project')
+        self.editor.windowTitleChanged.connect(self.setWindowTitle)
+        project_menu=self.menuBar().addMenu('Projekt')
+        self.editor.text(project_menu.menuAction(), 'Projekt', 'Project')
         keys={'Ctrl+N','Ctrl+Shift+O','Ctrl+S'}
         for action in self.editor.findChildren(QAction):
             if action.shortcut().toString() in keys:action.setShortcut(QKeySequence())
@@ -66,16 +76,66 @@ class Workspace(QMainWindow):
                                ('Zapisz sesję / Save session',self.editor.save_project,'Ctrl+S'),
                                ('Zapisz sesję jako / Save session as',self.save_as,'')]:
             action=project_menu.addAction(label,callback)
+            self.localize(action, label)
             if key:action.setShortcut(QKeySequence(key));self.addAction(action)
-        tools=self.menuBar().addMenu('Narzędzia / Tools')
-        for label,callback in [('Film → napisy → MP4',self.show_workflow),
+        tools=self.menuBar().addMenu('Narzędzia')
+        self.editor.text(tools.menuAction(), 'Narzędzia', 'Tools')
+        for label,callback in [('Krok po kroku / Step by step',self.show_workflow),
                                ('Pisownia AI · Ollama',self.show_ai),
                                ('Napraw synchronizację / Repair timing',self.show_repair),
                                ('Słowa na fali audio / Word alignment',self.editor.words_dialog),
                                ('Fragmenty do sprawdzenia / Review queue',self.show_review),
                                ('Kolejka eksportów / Export queue',self.show_queue),
                                ('Pokaz zdjęć i klipów / Slideshow',self.show_slideshow)]:
-            tools.addAction(label,callback)
+            action = tools.addAction(label,callback)
+            self.localize(action, label)
+        self.editor.interfaceChanged.connect(self.sync_interface)
+        from PySide6.QtWidgets import QApplication
+        QApplication.styleHints().colorSchemeChanged.connect(self.editor.apply_theme)
+        self._interface_signature = None
+        self.sync_interface()
+        self.show_workflow()
+
+    def localize(self, obj, label):
+        parts = label.split(' / ', 1)
+        self.editor.text(obj, parts[0], parts[-1])
+
+    def refresh_actions(self):
+        editor = self.editor
+        speech = self.transcription
+        count = len(speech.project.segments) if speech else 0
+        busy = bool(editor.export_process or (speech and speech.job.active))
+        ready = [bool(editor.project.video), bool(editor.track().segments), bool(count),
+                 bool(editor.track().segments or count), True]
+        for index, button in enumerate(self.flow_buttons):
+            enabled = ready[index] and (not busy or index == 4)
+            button.setEnabled(enabled)
+            button.setToolTip('' if enabled else editor.tr_text(
+                'Najpierw otwórz film lub dodaj napisy. Jeśli trwa zadanie, poczekaj na jego zakończenie.',
+                'Open a video or add captions first. If a task is running, wait for it to finish.'))
+
+    def sync_interface(self):
+        from ui.appearance import apply_appearance
+        from PySide6.QtWidgets import QApplication
+        editor = self.editor
+        signature = (editor.project.language, editor.project.theme, editor.interface_font_size(),
+                     QApplication.styleHints().colorScheme())
+        if signature == getattr(self, '_interface_signature', None):
+            return
+        self._interface_signature = signature
+        apply_appearance(self, editor.project.theme, editor.interface_font_size())
+        self.tabs.setTabText(0, editor.tr_text('Film i napisy', 'Video and captions'))
+        self.tabs.setTabText(1, editor.tr_text('Rozpoznawanie mowy', 'Speech recognition'))
+        self.refresh_actions()
+        if self.transcription:
+            speech = self.transcription
+            if speech.ui_language != editor.project.language:
+                speech.ui_language = editor.project.language
+                speech.build_ui()
+                speech.render()
+            speech.apply_theme()
+        if self.workflow:
+            self.workflow.refresh()
 
     def speech(self):
         if self.transcription is None:
@@ -86,10 +146,11 @@ class Workspace(QMainWindow):
             old = self.tabs.widget(1)
             self.tabs.blockSignals(True)
             self.tabs.removeTab(1)
-            self.tabs.insertTab(1, widget, 'Transkrypcja / Transcription')
+            self.tabs.insertTab(1, widget, self.editor.tr_text('Rozpoznawanie mowy', 'Speech recognition'))
             self.tabs.setCurrentIndex(1)
             self.tabs.blockSignals(False)
             old.deleteLater()
+            self.sync_interface()
         return self.transcription
 
     def switch_tab(self, index):
@@ -206,10 +267,9 @@ class Workspace(QMainWindow):
             track = to_track(speech.project)
             source, video = speech.project.source, self.editor.project.video
             if source and video and Path(source).resolve() != Path(video).resolve():
-                answer = QMessageBox.question(self, 'Źródło napisów / Caption source',
-                    'Nagranie transkrypcji różni się od bieżącego filmu.\n'
-                    'Dodać napisy do bieżącego filmu bez przesuwania czasów?\n\n'
-                    'The transcript uses another recording. Add captions to the current video at their original times?')
+                answer = QMessageBox.question(self, self.editor.tr_text('Źródło napisów', 'Caption source'),
+                    self.editor.tr_text('Nagranie transkrypcji różni się od bieżącego filmu.\nDodać napisy do bieżącego filmu bez przesuwania czasów?',
+                    'The transcript uses another recording. Add captions to the current video at their original times?'))
                 if answer != QMessageBox.StandardButton.Yes:
                     return
             if video and any(s.end > self.editor.info['duration'] for s in track.segments):
@@ -221,11 +281,12 @@ class Workspace(QMainWindow):
                 old = linked.segments
                 changed = sum(a.text != b.text or (a.start,a.end)!=(b.start,b.end)
                               for a,b in zip(old,track.segments)) + abs(len(old)-len(track.segments))
-                answer = QMessageBox.question(self,'Aktualizacja / Update',
-                    f'Powiązana ścieżka / Linked track: {linked.name}\n'
-                    f'Segmenty / Captions: {len(old)} → {len(track.segments)}; zmiany / changes: {changed}\n'
-                    'Tak / Yes: aktualizuj, zachowując styl / update and keep style.\n'
-                    'Nie / No: dodaj osobną ścieżkę / add a separate track.',
+                answer = QMessageBox.question(self,self.editor.tr_text('Aktualizacja napisów', 'Update captions'),
+                    self.editor.tr_text(
+                    f'Ścieżka: {linked.name}\nNapisy: {len(old)} → {len(track.segments)}. Zmiany: {changed}\n'
+                    'Tak: zaktualizuj tekst i zachowaj wygląd.\nNie: dodaj osobną ścieżkę.\nAnuluj: wróć bez zmian.',
+                    f'Track: {linked.name}\nCaptions: {len(old)} → {len(track.segments)}. Changes: {changed}\n'
+                    'Yes: update captions and keep the style.\nNo: add a separate track.\nCancel: return without changes.'),
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel)
                 if answer == QMessageBox.StandardButton.Cancel:
                     return

@@ -1,3 +1,13 @@
+# 0.7.0 — 2026-11-06
+
+- Ekran startowy i widoczny przewodnik „Krok po kroku” z dostępnością etapów zależną od stanu projektu.
+- Wspólny jasny i ciemny motyw obu kart, spójny język i rozmiar interfejsu 100%, 115% oraz 130%.
+- Uporządkowane narzędzia synchronizacji i sprawdzania oraz kontekstowe właściwości napisów i logo.
+- Prosty eksport MP4 z wyborem jakości; kodeki, FPS i CRF w ustawieniach zaawansowanych.
+- Otwieranie gotowego filmu i folderu, ponawianie eksportu po błędzie oraz osobne szczegóły diagnostyczne.
+- Czytelniejsze pola wyboru, fokus, etykiety dostępności i ostrzeżenia; obsługa małego okna przez przewijanie.
+- Poprawione zwalnianie okien Qt przy zamykaniu i testy regresji interfejsu.
+
 # 0.6.1
 
 - Usunięto wyścig przy anulowaniu eksportu na Windows: procesy i potoki są zamykane przed sprzątaniem, z krótkim ponowieniem blokady pliku tymczasowego.

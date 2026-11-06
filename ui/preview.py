@@ -14,7 +14,7 @@ class Preview(QWidget):
         self.ms = 0
         self.output_size = None
         self.rect = QRectF()
-        self.setMinimumSize(400, 225)
+        self.setMinimumSize(320, 160)
 
     def paintEvent(self, event):
         p = QPainter(self)

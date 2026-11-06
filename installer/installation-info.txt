@@ -1,4 +1,4 @@
-SUBTITLE STUDIO 0.6.1
+SUBTITLE STUDIO 0.7.0
 
 PL
 Instalator dodaje aplikację dla bieżącego użytkownika, bez wymagania konta administratora.

@@ -1,3 +1,11 @@
+## Weryfikacja 0.7.0
+
+209 testów zaliczonych, 1 opcjonalny test pominięty (161,65 s na bieżącym Windows). Ruff E9/F63/F7/F82: bez błędów. Nowe testy obejmują wspólny motyw i język, zachowanie tekstu i historii, kontekstowe właściwości, układ 1366 × 768, powiększenie tekstu, parametry eksportu, otwieranie wyniku i ponawianie po błędzie.
+
+Przebudowany EXE przeszedł próbę podglądu filmu, fali audio, ikony i palet oraz rzeczywistego eksportu z audio. Sprawdzono także łączenie filmów, obraz z audio, pokaz zdjęć, kolejkę eksportów, natywny proces pisowni, przekazanie czasów słów i odczyt/zapis wspólnej sesji. Worker Ollamy został sprawdzony z lokalnym serwerem testowym, bez pobierania modeli. Średni błąd pikseli eksportu względem oczekiwanego obrazu: 2,0398/255.
+
+Testy paczki wykonano z PATH bez developerskiego Pythona na bieżącym Windows, w trybie Qt offscreen; nie jest to test w czystej maszynie wirtualnej ani test czytnika ekranu.
+
 ## Weryfikacja 0.6.1
 
 Próba przed publikacją: 200 testów zaliczonych, 1 opcjonalny test słownika pominięty (102,23 s na bieżącym Windows). Podczas kontroli w GitHub Actions wykryto wyścig przy sprzątaniu anulowanego eksportu na Windows. Dodano oczekiwanie na procesy, zamykanie potoków i krótkie ponowienie blokady pliku tymczasowego oraz dwie regresje. Pełny zestaw po tej poprawce obejmuje 203 przypadki, w tym jeden opcjonalny test słownika.

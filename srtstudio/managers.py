@@ -336,7 +336,8 @@ def settings_dialog(w):
     theme = QComboBox()
     for key in ("system", "light", "dark"):
         theme.addItem(w.t(key), key)
-    theme.setCurrentIndex(theme.findData(w.settings.value("theme", "system")))
+    current_theme = w.workspace.editor.project.theme if hasattr(w, 'workspace') else w.settings.value("theme", "system")
+    theme.setCurrentIndex(theme.findData(current_theme))
     form.addRow(w.t("theme"), theme)
     form.addRow(QLabel(w.t("profile")))
     inputs = {}
@@ -362,6 +363,13 @@ def settings_dialog(w):
         w.settings.setValue("language", lang.currentData())
         w.settings.setValue("theme", theme.currentData())
         w.ui_language = lang.currentData()
+        if hasattr(w, 'workspace'):
+            editor = w.workspace.editor
+            editor.checkpoint()
+            editor.project.language = lang.currentData()
+            editor.project.theme = theme.currentData()
+            editor.retranslate()
+            editor.apply_theme()
         w.apply_theme()
         w.build_ui()
         w.render()
