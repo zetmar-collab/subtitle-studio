@@ -59,6 +59,8 @@ class WordTimeline(QWidget):
 class WordTimingDialog(QDialog):
     def __init__(self,owner,row):
         super().__init__(owner);self.owner=owner;self.row=row;self.loading=False
+        from ui.help import install_help
+        install_help(self, owner)
         self.segment=copy.deepcopy(owner.track().segments[row]);tokens=self.segment.text.split()
         if not tokens or self.segment.end-self.segment.start<len(tokens):
             raise ValueError('Najpierw ustaw tekst i poprawny czas napisu / Set text and valid timing first')

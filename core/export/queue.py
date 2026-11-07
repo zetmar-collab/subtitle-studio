@@ -12,6 +12,7 @@ from srtstudio.project import atomic_write
 
 class ExportQueue(QObject):
     changed=Signal()
+    completed=Signal(str)
 
     def __init__(self,parent,path):
         super().__init__(parent)
@@ -19,6 +20,7 @@ class ExportQueue(QObject):
         self.lock=QLockFile(str(self.path)+'.lock')
         if not self.lock.tryLock(0):raise ValueError('Kolejka jest używana / Queue is in use')
         self.jobs=[];self.process=None;self.running=False;self.temp=None;self.current=None
+        self.last_completed = None
         self.timer=QTimer(self);self.timer.timeout.connect(self.poll);self.timer.start(250)
 
     @property
@@ -65,6 +67,8 @@ class ExportQueue(QObject):
         self.running=False;self.jobs=data['jobs'];self.persist();self.changed.emit()
 
     def start(self):
+        if not self.running:
+            self.last_completed = None
         self.running=True;self.poll()
 
     def retry(self):
@@ -90,7 +94,12 @@ class ExportQueue(QObject):
         if not self.running:return
         job=next((job for job in self.jobs if job['state']=='queued'),None)
         if job is None:
-            self.running=False;self.persist();self.changed.emit();return
+            self.running=False;self.persist();self.changed.emit()
+            if self.last_completed:
+                target = self.last_completed
+                self.last_completed = None
+                self.completed.emit(target)
+            return
         self.current=job
         try:
             project=Project.from_data(job['project'])
@@ -120,6 +129,8 @@ class ExportQueue(QObject):
         except (ValueError,OSError):result={}
         cancelled=self.cancel_path.exists()
         success=code==0 and result.get('done')
+        if success:
+            self.last_completed = self.current['target']
         self.current.update(state='cancelled' if cancelled else ('done' if success else 'error'),
                             percent=100 if success else self.current['percent'],
                             error='' if success else result.get('error','Render process failed'))

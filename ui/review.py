@@ -16,6 +16,8 @@ def reasons(segment):
 class ReviewDialog(QDialog):
     def __init__(self,workspace):
         super().__init__(workspace)
+        from ui.help import install_help
+        install_help(self, workspace.editor)
         self.workspace=workspace;self.speech=workspace.speech();self.signature=None
         self.setWindowTitle('Fragmenty do sprawdzenia / Review queue');self.resize(900,500)
         layout=QVBoxLayout(self);note=QLabel('Oceny ASR są przybliżone. Kliknij fragment, popraw tekst w karcie Transkrypcja i odsłuchaj.\n'

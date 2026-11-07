@@ -13,6 +13,8 @@ from ui.jobs import Job
 class OllamaDialog(QDialog):
     def __init__(self,workspace):
         super().__init__(workspace);self.workspace=workspace;self.process=None;self.temp=None;self.request=0
+        from ui.help import install_help
+        install_help(self, workspace.editor)
         self.proposals=[];self.context=None;self.closed=False
         self.settings=QSettings('LocalTools','SubtitleStudioAI')
         self.setWindowTitle('Lokalna korekta AI · Ollama');self.resize(1100,680)

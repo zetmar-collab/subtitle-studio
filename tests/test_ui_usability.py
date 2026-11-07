@@ -136,7 +136,7 @@ def test_successful_export_exposes_result_and_correct_folder(host, monkeypatch, 
     assert not editor.export_result.isHidden()
     assert 'gotowy film.mp4' in editor.export_result_label.text()
     urls = []
-    monkeypatch.setattr(QDesktopServices, 'openUrl', lambda url: urls.append(url.toLocalFile()))
+    monkeypatch.setattr(QDesktopServices, 'openUrl', lambda url: (urls.append(url.toLocalFile()), True)[1])
     editor.open_export()
     editor.open_export(True)
     assert list(map(Path, urls)) == [Path(editor.export_target), tmp_path]
@@ -165,3 +165,174 @@ def test_export_failure_offers_retry_after_worker_cleanup(host, app, monkeypatch
     retry.click()
     app.processEvents()
     assert retries == [None]
+
+
+def test_playback_requires_confirmation_and_keeps_original_export_path(host, app, monkeypatch, tmp_path):
+    from PySide6.QtWidgets import QMessageBox
+    from PySide6.QtGui import QDesktopServices
+    from ui.playback import offer_playback
+    from PySide6.QtCore import Qt
+    first = tmp_path / 'film z napisami ą.mp4'
+    first.write_bytes(b'video')
+    calls = []
+    monkeypatch.setattr(QDesktopServices, 'openUrl', lambda url: (calls.append(url.toLocalFile()), True)[1])
+    box = offer_playback(host.editor, first, host.editor.tr_text)
+    assert box.windowModality() == Qt.WindowModality.NonModal
+    assert calls == [] and box.defaultButton() == box.button(QMessageBox.StandardButton.No)
+    host.editor.export_target = str(tmp_path / 'other.mp4')
+    box.done(QMessageBox.StandardButton.Yes)
+    app.processEvents()
+    assert list(map(Path, calls)) == [first]
+    box = offer_playback(host.editor, first, host.editor.tr_text)
+    box.done(QMessageBox.StandardButton.No)
+    assert len(calls) == 1
+
+
+def test_missing_file_or_failed_player_has_recovery_message(host, monkeypatch, tmp_path):
+    from PySide6.QtWidgets import QMessageBox
+    from PySide6.QtGui import QDesktopServices
+    from ui.playback import play_video
+    warnings, launches = [], []
+    monkeypatch.setattr(QMessageBox, 'warning', lambda *args: warnings.append(args[2]))
+    monkeypatch.setattr(QDesktopServices, 'openUrl', lambda url: (launches.append(url), False)[1])
+    target = tmp_path / 'missing.mp4'
+    assert not play_video(host.editor, target, host.editor.tr_text)
+    assert not launches and 'folder' in warnings[-1]
+    target.write_bytes(b'video')
+    assert not play_video(host.editor, target, host.editor.tr_text)
+    assert len(launches) == 1 and 'Windows' in warnings[-1]
+
+
+def test_help_from_transcription_shortcuts_and_offline_navigation(host, app):
+    from PySide6.QtCore import Qt, QUrl
+    from PySide6.QtTest import QTest
+    host.show()
+    speech = host.speech()
+    host.tabs.setCurrentIndex(1)
+    speech.table.setFocus()
+    app.processEvents()
+    QTest.keyClick(speech.table, Qt.Key.Key_F1)
+    app.processEvents()
+    dialog = host.editor.help_dialog
+    assert dialog.isVisible()
+    assert 'Skróty klawiszowe' in dialog.browser.toPlainText()
+    dialog.follow_link(QUrl('OLLAMA.md'))
+    assert dialog.current == 'OLLAMA.md'
+    dialog.go_back()
+    assert dialog.current == 'POMOC.md'
+    dialog.search.setText('Ctrl+Shift+Q')
+    dialog.find_next()
+    assert dialog.browser.textCursor().selectedText() == 'Ctrl+Shift+Q'
+    dialog.show_file('POMOC.md', 'skroty')
+    app.processEvents()
+    assert dialog.browser.verticalScrollBar().value() > 0
+    dialog.close()
+
+
+def test_global_shortcuts_do_not_conflict_with_caption_exports_or_polish_input(host, app, monkeypatch):
+    from PySide6.QtGui import QAction
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QFileDialog
+    speech = host.speech()
+    global_keys = [action.shortcut().toString() for action in host.findChildren(QAction)
+                   if action.shortcutContext() == Qt.ShortcutContext.WindowShortcut and not action.shortcut().isEmpty()]
+    assert len(global_keys) == len(set(global_keys))
+    assert 'Ctrl+Shift+S' in global_keys
+    assert not any(key.startswith('Ctrl+Alt+') for key in global_keys)
+    exports = [action.shortcut().toString() for action in speech.shortcut_actions]
+    assert 'Ctrl+Shift+E' in exports and 'Ctrl+Shift+S' not in exports
+    paths = []
+    monkeypatch.setattr(QFileDialog, 'getSaveFileName', lambda *args: (paths.append('save as'), ('', ''))[1])
+    host.show()
+    speech.table.setFocus()
+    app.processEvents()
+    QTest.keyClick(speech.table, Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier)
+    assert paths == ['save as']
+
+
+def test_no_playback_question_after_cancelled_or_failed_export(host, monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import json
+    import ui.playback as playback
+    from PySide6.QtWidgets import QMessageBox
+    questions = []
+    monkeypatch.setattr(playback, 'offer_playback', lambda *args: questions.append(args))
+    monkeypatch.setattr(QMessageBox, 'open', lambda self: None)
+    for cancelled in (False, True):
+        editor = host.editor
+        editor.export_status = tmp_path / 'status.json'
+        editor.export_status.write_text(json.dumps({'error': 'failure'}))
+        editor.export_cancel = tmp_path / 'cancel'
+        if cancelled:
+            editor.export_cancel.touch()
+        editor.export_process = SimpleNamespace(deleteLater=lambda: None)
+        editor.export_temp = SimpleNamespace(cleanup=lambda: None)
+        editor.finish_export(1, None)
+    assert questions == []
+
+
+def test_queue_offers_only_last_result_after_the_whole_series(host, tmp_path):
+    from types import SimpleNamespace
+    import json
+    from core.export.queue import ExportQueue
+    queue = ExportQueue(host, tmp_path / 'queue.exports.json')
+    queue.timer.stop()
+    queue.jobs = [dict(target=str(tmp_path / name), state='queued', percent=0, error='')
+                  for name in ('first.mp4', 'last.mp4')]
+    results = []
+    queue.completed.connect(results.append)
+    queue.running = True
+    queue.status = tmp_path / 'status.json'
+    queue.status.write_text(json.dumps({'done': True}))
+    queue.cancel_path = tmp_path / 'cancel'
+    for job in queue.jobs:
+        queue.current = job
+        queue.process = SimpleNamespace(deleteLater=lambda: None)
+        queue.temp = SimpleNamespace(cleanup=lambda: None)
+        queue.finish(0, None)
+        assert results == []
+    queue.poll()
+    queue.poll()
+    assert results == [str(tmp_path / 'last.mp4')]
+    assert not queue.running
+    queue.release()
+
+
+def test_media_creator_offers_playback_after_cleanup(host, monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from ui.media_job import MediaJobDialog
+    import ui.playback as playback
+    class Creator(MediaJobDialog):
+        def begin(self):
+            pass
+    dialog = Creator(host.editor)
+    dialog.add_job_controls('Start')
+    dialog.target = str(tmp_path / 'created.mp4')
+    dialog.read_status = lambda: {'done': True}
+    dialog.process = SimpleNamespace(deleteLater=lambda: None)
+    dialog.temp = SimpleNamespace(cleanup=lambda: None)
+    calls = []
+    monkeypatch.setattr(playback, 'offer_playback', lambda parent, target, translate:
+                        calls.append((target, parent.process, parent.temp)))
+    dialog.finish_job(0, None)
+    assert calls == [(dialog.target, None, None)]
+    dialog.close()
+
+
+def test_help_is_usable_inside_modal_export_dialog(host, app):
+    from ui.export_dialog import ExportDialog
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    host.show()
+    dialog = ExportDialog(host.editor)
+    dialog.setWindowModality(Qt.WindowModality.WindowModal)
+    dialog.show()
+    dialog.quality.setFocus()
+    app.processEvents()
+    QTest.keyClick(dialog.quality, Qt.Key.Key_F1)
+    app.processEvents()
+    assert dialog.help_dialog.isVisible()
+    assert dialog.help_dialog.parent() is dialog
+    dialog.help_dialog.close()
+    dialog.reject()

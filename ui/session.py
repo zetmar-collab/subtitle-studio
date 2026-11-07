@@ -20,7 +20,9 @@ class IntegratedSpeechWindow(Window):
         super().build_ui()
         for action in self.shortcut_actions:
             if action.shortcut().toString()=='Ctrl+S':action.setShortcut(QKeySequence())
+            elif action.shortcut().toString()=='Ctrl+Shift+S':action.setShortcut(QKeySequence('Ctrl+Shift+E'))
         self.menuBar().addAction(self.workspace.editor.tr_text('Korekta AI', 'AI proofreading'),self.workspace.show_ai)
+        self.menuBar().addAction(self.workspace.editor.tr_text('Pomoc', 'Help'),self.workspace.editor.show_help)
         for label in self.findChildren(QLabel):
             if label.objectName() == 'brand':
                 label.setText(self.workspace.editor.tr_text('Rozpoznawanie mowy', 'Speech recognition'))

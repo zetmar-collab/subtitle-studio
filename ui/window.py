@@ -119,7 +119,11 @@ class Window(QMainWindow):
     def build(self):
         help_menu = self.menuBar().addMenu('Pomoc')
         self.translated.append((help_menu.menuAction(), 'Pomoc', 'Help'))
-        help_menu.addAction(self.action('O aplikacji i licencjach', 'About and licenses', 'F1', self.about))
+        self.help_action = self.action('Instrukcja obsługi', 'User guide', 'F1', self.show_help)
+        self.shortcuts_action = self.action('Skróty klawiszowe', 'Keyboard shortcuts', 'Ctrl+F1', self.show_shortcuts)
+        self.about_action = self.action('O aplikacji i licencjach', 'About and licenses', 'Shift+F1', self.about)
+        for action in (self.help_action, self.shortcuts_action, self.about_action):
+            help_menu.addAction(action)
         toolbar = self.addToolBar('Project')
         toolbar.setMovable(False)
         more_menu = QMenu(self)
@@ -161,7 +165,7 @@ class Window(QMainWindow):
         more.setMenu(more_menu)
         more.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         toolbar.addWidget(more)
-        self.action('Pełny ekran', 'Full screen', 'F11', lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen())
+        self.action('Pełny ekran', 'Full screen', 'F11', lambda: self.window().showNormal() if self.window().isFullScreen() else self.window().showFullScreen())
         central = QWidget()
         root = QVBoxLayout(central)
         root.setContentsMargins(16, 10, 16, 12)
@@ -399,6 +403,14 @@ class Window(QMainWindow):
         lo.addWidget(self.timeline_scroll)
         edit_menu = self.menuBar().addMenu('Montaż')
         self.translated.append((edit_menu.menuAction(), 'Montaż', 'Edit'))
+        for pl, en, key, callback in [
+                ('Dodaj napis', 'Add caption', 'Insert', self.add_segment),
+                ('Usuń zaznaczone napisy', 'Delete selected captions', 'Delete', self.delete_segment),
+                ('Połącz zaznaczone napisy', 'Merge selected captions', 'Ctrl+Shift+B', self.merge_segments),
+                ('Znajdź i zamień…', 'Find and replace…', 'Ctrl+F', self.replace),
+                ('Przesuń napisy w czasie…', 'Shift caption timing…', 'Ctrl+Shift+T', self.shift_dialog),
+                ('Sprawdź napisy', 'Check captions', 'Ctrl+Shift+K', self.quality_dialog)]:
+            edit_menu.addAction(self.action(pl, en, key, lambda checked=False, cb=callback: self.navigate(cb)))
         edit_menu.addAction(self.action('Duplikuj napisy', 'Duplicate subtitles', '', self.duplicate_segments))
         edit_menu.addAction(self.action('Usuń i domknij napisy', 'Ripple delete subtitles', '', self.ripple_segments))
         vertical.addWidget(lower); vertical.setSizes([450, 400])
@@ -427,7 +439,28 @@ class Window(QMainWindow):
 
     def open_export(self, folder=False):
         target = Path(self.export_target)
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(target.parent if folder else target)))
+        if folder:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(target.parent)))
+        else:
+            from ui.playback import play_video
+            play_video(self, target, self.tr_text)
+
+    def show_help(self, owner=None):
+        from ui.help import HelpDialog
+        owner = owner if isinstance(owner, QWidget) else self
+        if isinstance(owner, HelpDialog):
+            dialog = owner
+        else:
+            if not hasattr(owner, 'help_dialog'):
+                owner.help_dialog = HelpDialog(owner)
+            dialog = owner.help_dialog
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+        return dialog
+
+    def show_shortcuts(self, owner=None):
+        self.show_help(owner).show_file('POMOC.md', 'skroty')
 
     def about(self):
         QMessageBox.information(self,f'Subtitle Studio {VERSION}',self.tr_text(
@@ -754,7 +787,7 @@ class Window(QMainWindow):
             focus = QApplication.focusWidget()
             if focus and (focus is self or self.isAncestorOf(focus)) and isinstance(focus,(QLineEdit,QTextEdit,QAbstractSpinBox,QComboBox)):
                 keys = (Qt.Key.Key_Space,Qt.Key.Key_Left,Qt.Key.Key_Right,Qt.Key.Key_Home,Qt.Key.Key_End,
-                        Qt.Key.Key_I,Qt.Key.Key_O,Qt.Key.Key_D,Qt.Key.Key_B,Qt.Key.Key_Delete)
+                        Qt.Key.Key_I,Qt.Key.Key_O,Qt.Key.Key_D,Qt.Key.Key_B,Qt.Key.Key_Delete,Qt.Key.Key_Insert)
                 if event.key() in keys:
                     event.accept()
                     return True
@@ -1404,6 +1437,9 @@ class Window(QMainWindow):
             self.statusBar().showMessage(self.tr_text('Film zapisany.', 'Video saved.'),20000)
         process.deleteLater()
         self.export_temp.cleanup(); self.export_temp = None
+        if code == 0 and result.get('done'):
+            from ui.playback import offer_playback
+            offer_playback(self, self.export_target, self.tr_text)
 
     def retranslate(self):
         for obj, pl, en in self.translated:

@@ -10,6 +10,8 @@ from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QL
 class MediaJobDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
+        from ui.help import install_help
+        install_help(self, parent)
         self.owner = parent
         self.process = None
         self.temp = None
@@ -29,10 +31,14 @@ class MediaJobDialog(QDialog):
         bottom = QHBoxLayout()
         self.start = QPushButton(start_text)
         self.start.clicked.connect(self.begin)
+        self.start.setShortcut('Ctrl+Return')
+        self.start.setToolTip(self.owner.tr_text('Rozpocznij tworzenie filmu — Ctrl+Enter', 'Create video — Ctrl+Enter'))
         self.controls.append(self.start)
         bottom.addWidget(self.start)
         self.cancel = QPushButton(self.owner.tr_text('Anuluj zadanie','Cancel job'))
         self.cancel.clicked.connect(self.cancel_job)
+        self.cancel.setShortcut('Ctrl+.')
+        self.cancel.setToolTip(self.owner.tr_text('Anuluj zadanie — Ctrl+.', 'Cancel job — Ctrl+.'))
         self.cancel.setEnabled(False)
         bottom.addWidget(self.cancel)
         self.open_button = QPushButton(self.owner.tr_text('Otwórz wynik w edytorze','Open result in editor'))
@@ -109,6 +115,9 @@ class MediaJobDialog(QDialog):
         self.process = None
         self.temp.cleanup()
         self.temp = None
+        if success:
+            from ui.playback import offer_playback
+            offer_playback(self, self.target, self.owner.tr_text)
 
     def cancel_job(self):
         if self.process:

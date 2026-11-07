@@ -1,3 +1,11 @@
+## Weryfikacja 0.7.1
+
+217 testów zaliczonych, 1 opcjonalny pominięty (195,92 s na bieżącym Windows). Ruff E9/F63/F7/F82: bez błędów. Testy obejmują pytanie po eksporcie, otwieranie dokładnie wybranego pliku przez usługę systemową, brak pytania po anulowaniu/błędzie, jedno pytanie po serii eksportów, pomoc offline, jej rozdziały, wyszukiwanie i przewijanie do tabeli skrótów oraz F1 w karcie transkrypcji i modalnym oknie eksportu. Sprawdzono także brak konfliktu zapisu jako z eksportem napisów i z wpisywaniem polskich znaków.
+
+Gotowy EXE przeszedł podgląd, eksport z audio, kontrolę pikseli, integrację obu kart, pisownię, kolejkę, łączenie filmów, obraz z audio, pokaz zdjęć i worker Ollamy z lokalnym serwerem testowym. Zweryfikowano obecność pliku pomocy oraz końcowych implementacji pomocy i pytania o odtworzenie w paczce. Test instalatora objął instalację w osobnym folderze, kontrolę działania aplikacji i odinstalowanie z zachowaniem projektu użytkownika.
+
+Uruchamianie odtwarzacza testowano przez kontrolowaną usługę QDesktopServices, bez automatycznego odtwarzania plików podczas testów. Testy Qt offscreen nie zastępują kontroli czytnikiem ekranu ani czystej maszyny wirtualnej.
+
 ## Weryfikacja 0.7.0
 
 209 testów zaliczonych, 1 opcjonalny test pominięty (161,65 s na bieżącym Windows). Ruff E9/F63/F7/F82: bez błędów. Nowe testy obejmują wspólny motyw i język, zachowanie tekstu i historii, kontekstowe właściwości, układ 1366 × 768, powiększenie tekstu, parametry eksportu, otwieranie wyniku i ponawianie po błędzie.

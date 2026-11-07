@@ -1,5 +1,9 @@
 # Subtitle Studio — lokalny edytor napisów i logo
 
+## Wersja 0.7.1
+
+Pytanie o odtworzenie filmu po eksporcie, pełna pomoc offline pod F1 oraz uzupełnione skróty klawiszowe. [Instrukcja i skróty](docs/POMOC.md).
+
 ## Wersja 0.7.0
 
 Uproszczony interfejs desktopowy: przewodnik „Krok po kroku”, wspólny motyw i język obu kart, większy tekst, kontekstowe właściwości oraz prostszy eksport z otwieraniem gotowego filmu. [Opis zmian UX/UI](docs/UX_UI.md).
@@ -9,6 +13,9 @@ Poprawiono start transkrypcji z filmu, wybór plików wideo, zakres napisów wys
 Poprawki ochrony danych i synchronizacji z audytu, wspólny projekt obu kart, aktualizacja powiązanej ścieżki, naprawa czasów, edycja słów na fali audio, kolejka eksportów i pokaz zdjęć z muzyką. Dodano **lokalną korektę AI przez Ollamę** z podglądem i wyborem propozycji. [Nowości i obsługa](docs/NOWOSCI_0.6.md) · [Ollama](docs/OLLAMA.md).
 
 ## Zrzuty ekranu
+
+Pomoc offline z instrukcją i skrótami otwiera **F1**; samą tabelę skrótów
+otwiera **Ctrl+F1**. [Pomoc programu](docs/POMOC.md).
 
 Ekran startowy z edytorem napisów i przewodnikiem „Krok po kroku”.
 
@@ -30,11 +37,11 @@ Działająca aplikacja Windows w Pythonie i PySide6, z eksportem FFmpeg. Wdrożo
 
 ## Uruchomienie
 
-Publiczne [wydanie 0.7.0](https://github.com/zetmar-collab/subtitle-studio/releases/tag/v0.7.0) zawiera instalatory Windows x64, wersję przenośną, źródła oraz sumy SHA-256.
+Publiczne [wydanie 0.7.1](https://github.com/zetmar-collab/subtitle-studio/releases/tag/v0.7.1) zawiera instalatory Windows x64, wersję przenośną, źródła oraz sumy SHA-256.
 
-- [Instalator standardowy 0.7.0](https://github.com/zetmar-collab/subtitle-studio/releases/download/v0.7.0/SubtitleStudio-Setup-0.7.0-x64.exe) zawiera Python i biblioteki aplikacji; nie wymaga oddzielnej instalacji Pythona.
-- [Wersja przenośna ZIP](https://github.com/zetmar-collab/subtitle-studio/releases/download/v0.7.0/SubtitleStudio-Windows-x64.zip) — rozpakuj cały katalog i uruchom `SubtitleStudio.exe`.
-- [Instalator Online 0.7.0](https://github.com/zetmar-collab/subtitle-studio/releases/download/v0.7.0/SubtitleStudio-Setup-0.7.0-Online-x64.exe) wymaga Pythona 3.12 i internetu przy pierwszym uruchomieniu, aby pobrać zależności z PyPI.
+- [Instalator standardowy 0.7.1](https://github.com/zetmar-collab/subtitle-studio/releases/download/v0.7.1/SubtitleStudio-Setup-0.7.1-x64.exe) zawiera Python i biblioteki aplikacji; nie wymaga oddzielnej instalacji Pythona.
+- [Wersja przenośna ZIP](https://github.com/zetmar-collab/subtitle-studio/releases/download/v0.7.1/SubtitleStudio-Windows-x64.zip) — rozpakuj cały katalog i uruchom `SubtitleStudio.exe`.
+- [Instalator Online 0.7.1](https://github.com/zetmar-collab/subtitle-studio/releases/download/v0.7.1/SubtitleStudio-Setup-0.7.1-Online-x64.exe) wymaga Pythona 3.12 i internetu przy pierwszym uruchomieniu, aby pobrać zależności z PyPI.
 
 Do pracy z filmem zainstaluj FFmpeg i udostępnij ffmpeg oraz ffprobe w PATH. Modele Whisper pobiera się osobno w menedżerze aplikacji. Korekta AI wymaga uruchomionej lokalnej Ollamy z pobranym modelem tekstowym. Modele i narzędzia FFmpeg nie są dołączone do wydania.
 

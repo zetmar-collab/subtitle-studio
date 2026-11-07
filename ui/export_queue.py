@@ -8,9 +8,15 @@ from core.export.queue import ExportQueue
 class ExportQueueDialog(QDialog):
     def __init__(self,workspace):
         super().__init__(workspace);self.workspace=workspace;self.editor=workspace.editor
+        from ui.help import install_help
+        install_help(self, self.editor)
         path=self.editor.store/'export-queues'/(self.editor.recovery.path.stem+'.exports.json')
         if workspace.queue is None:workspace.queue=ExportQueue(workspace,path)
         self.queue=workspace.queue;self.setWindowTitle('Kolejka eksportów / Export queue');self.resize(1050,750)
+        if not getattr(self.queue, '_playback_connected', False):
+            from ui.playback import offer_playback
+            self.queue.completed.connect(lambda target: offer_playback(self.workspace, target, self.editor.tr_text))
+            self.queue._playback_connected = True
         layout=QVBoxLayout(self);layout.addWidget(QLabel('Każde zadanie zachowuje migawkę projektu. / Each job retains its project snapshot.'))
         form=QFormLayout();self.folder=QLineEdit();self.base=QLineEdit('film')
         choose=QPushButton('Folder wyników / Output folder');choose.clicked.connect(self.choose_folder)

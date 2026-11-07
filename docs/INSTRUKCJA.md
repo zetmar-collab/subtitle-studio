@@ -1,3 +1,6 @@
+Aktualna instrukcja z kompletem skrótów: [Pomoc programu](POMOC.md).
+W aplikacji otwórz ją klawiszem **F1** lub przez menu **Pomoc**.
+
 ## Aktualizacja 0.6.0
 
 Zrealizowane poprawki i nowe funkcje opisuje [NOWOSCI_0.6.md](NOWOSCI_0.6.md), a lokalną korektę AI [OLLAMA.md](OLLAMA.md). Poniższe opisy wcześniejszych wersji pozostawiono jako historię zmian.

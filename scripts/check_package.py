@@ -21,6 +21,7 @@ subprocess.run([str(exe),'--smoke-test',str(demo),str(shot)],env=env,check=True,
 gui = json.loads(Path(str(shot)+'.json').read_text())
 assert gui['frame'] and gui['wave_samples'] > 0 and gui['media_error'] == ''
 assert gui['icon'] and gui['visual_colors']
+assert (package/'docs/POMOC.md').is_file(), 'The offline user guide is missing.'
 with tempfile.TemporaryDirectory(prefix='subtitle-integration-') as integration_folder:
     report_path = Path(integration_folder)/'report.json'
     subprocess.run([str(exe),'--integration-smoke',str(report_path),str(load(demo).video),'--queue-test'],

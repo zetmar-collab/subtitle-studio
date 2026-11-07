@@ -68,27 +68,55 @@ class Workspace(QMainWindow):
         self.editor.windowTitleChanged.connect(self.setWindowTitle)
         project_menu=self.menuBar().addMenu('Projekt')
         self.editor.text(project_menu.menuAction(), 'Projekt', 'Project')
-        keys={'Ctrl+N','Ctrl+Shift+O','Ctrl+S'}
+        keys={'Ctrl+N','Ctrl+Shift+O','Ctrl+S','F1','Ctrl+F1','Shift+F1','F11'}
         for action in self.editor.findChildren(QAction):
             if action.shortcut().toString() in keys:action.setShortcut(QKeySequence())
+            elif action.shortcut().toString() == 'Ctrl+Shift+S':
+                action.setShortcut(QKeySequence('Ctrl+Shift+E'))
         for label,callback,key in [('Nowa sesja / New session',self.editor.new_project,'Ctrl+N'),
                                ('Otwórz sesję / Open session',self.editor.open_project,'Ctrl+Shift+O'),
                                ('Zapisz sesję / Save session',self.editor.save_project,'Ctrl+S'),
-                               ('Zapisz sesję jako / Save session as',self.save_as,'')]:
+                               ('Zapisz sesję jako / Save session as',self.save_as,'Ctrl+Shift+S')]:
             action=project_menu.addAction(label,callback)
             self.localize(action, label)
             if key:action.setShortcut(QKeySequence(key));self.addAction(action)
         tools=self.menuBar().addMenu('Narzędzia')
         self.editor.text(tools.menuAction(), 'Narzędzia', 'Tools')
-        for label,callback in [('Krok po kroku / Step by step',self.show_workflow),
-                               ('Pisownia AI · Ollama',self.show_ai),
-                               ('Napraw synchronizację / Repair timing',self.show_repair),
-                               ('Słowa na fali audio / Word alignment',self.editor.words_dialog),
-                               ('Fragmenty do sprawdzenia / Review queue',self.show_review),
-                               ('Kolejka eksportów / Export queue',self.show_queue),
-                               ('Pokaz zdjęć i klipów / Slideshow',self.show_slideshow)]:
+        for label,callback,key in [('Krok po kroku / Step by step',self.show_workflow,'F4'),
+                               ('Pisownia AI · Ollama',self.show_ai,'Ctrl+Shift+A'),
+                               ('Napraw synchronizację / Repair timing',self.show_repair,'Ctrl+Shift+H'),
+                               ('Słowa na fali audio / Word alignment',self.editor.words_dialog,'Ctrl+Shift+W'),
+                               ('Fragmenty do sprawdzenia / Review queue',self.show_review,'Ctrl+Shift+F'),
+                               ('Kolejka eksportów / Export queue',self.show_queue,'Ctrl+Shift+Q'),
+                               ('Pokaz zdjęć i klipów / Slideshow',self.show_slideshow,'Ctrl+Shift+P')]:
             action = tools.addAction(label,callback)
             self.localize(action, label)
+            action.setShortcut(QKeySequence(key))
+        for label,callback,key in [
+                ('Film i napisy / Video and captions',lambda: self.tabs.setCurrentIndex(0),'F2'),
+                ('Rozpoznawanie mowy / Speech recognition',lambda: self.tabs.setCurrentIndex(1),'F3'),
+                ('Rozpoznaj mowę / Recognize speech',self.transcribe_video,'F6'),
+                ('Sprawdź pisownię / Check spelling',self.check_spelling,'F7'),
+                ('Edytuj tekst / Edit text',self.send_to_transcript,'Ctrl+Shift+R'),
+                ('Zastosuj napisy / Apply captions',self.send_to_editor,'Ctrl+Shift+G')]:
+            action = tools.addAction(label,callback)
+            self.localize(action, label)
+            action.setShortcut(QKeySequence(key))
+        help_menu = self.menuBar().addMenu('Pomoc')
+        self.editor.text(help_menu.menuAction(), 'Pomoc', 'Help')
+        for pl,en,key,callback in [
+                ('Instrukcja obsługi','User guide','F1',self.editor.show_help),
+                ('Skróty klawiszowe','Keyboard shortcuts','Ctrl+F1',self.editor.show_shortcuts),
+                ('O aplikacji i licencjach','About and licenses','Shift+F1',self.editor.about)]:
+            action = help_menu.addAction(self.editor.tr_text(pl,en),callback)
+            self.editor.translated.append((action,pl,en))
+            action.setShortcut(QKeySequence(key))
+        view = self.menuBar().addMenu(self.editor.tr_text('Widok','View'))
+        self.editor.translated.append((view.menuAction(),'Widok','View'))
+        full_screen = view.addAction(self.editor.tr_text('Pełny ekran','Full screen'),
+            lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen())
+        self.editor.translated.append((full_screen,'Pełny ekran','Full screen'))
+        full_screen.setShortcut(QKeySequence('F11'))
         self.editor.interfaceChanged.connect(self.sync_interface)
         from PySide6.QtWidgets import QApplication
         QApplication.styleHints().colorSchemeChanged.connect(self.editor.apply_theme)
@@ -99,6 +127,12 @@ class Workspace(QMainWindow):
     def localize(self, obj, label):
         parts = label.split(' / ', 1)
         self.editor.text(obj, parts[0], parts[-1])
+
+    def check_spelling(self):
+        if self.tabs.currentIndex() == 1:
+            self.speech().schedule_spell()
+        else:
+            self.editor.spelling()
 
     def refresh_actions(self):
         editor = self.editor

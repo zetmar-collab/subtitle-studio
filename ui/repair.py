@@ -7,6 +7,8 @@ from core.subtitles.service import warnings
 class RepairDialog(QDialog):
     def __init__(self,owner):
         super().__init__(owner)
+        from ui.help import install_help
+        install_help(self, owner)
         self.owner=owner;self.setWindowTitle('Naprawa synchronizacji / Repair timing');self.resize(850,550)
         layout=QVBoxLayout(self)
         note=QLabel('Propozycja zachowuje cały tekst. Zmienione granice unieważnią czasy słów.\n'

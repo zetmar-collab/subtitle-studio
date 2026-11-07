@@ -1,3 +1,11 @@
+# 0.7.1 — 2026-11-07
+
+- Po udanym eksporcie program pyta o odtworzenie filmu w domyślnym odtwarzaczu Windows. Dotyczy też kreatorów; kolejka pyta raz po zakończeniu serii.
+- Pomoc offline pod F1: pełny przewodnik, wyszukiwanie, rozdziały szczegółowe i tabela skrótów dostępna także pod Ctrl+F1.
+- Nowe skróty dla kart, zapisu sesji jako, rozpoznawania mowy, przekazywania napisów, narzędzi i podstawowych operacji edycji.
+- Ctrl+Shift+S zapisuje wspólną sesję jako; Ctrl+Shift+E eksportuje napisy lub transkrypcję w aktywnej karcie. Nowe skróty nie kolidują z polskimi znakami AltGr.
+- F11 przełącza pełny ekran wspólnego okna. Kreatory obsługują Ctrl+Enter i Ctrl+. do rozpoczęcia i anulowania.
+
 # 0.7.0 — 2026-11-06
 
 - Ekran startowy i widoczny przewodnik „Krok po kroku” z dostępnością etapów zależną od stanu projektu.

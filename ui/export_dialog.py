@@ -6,6 +6,8 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QComboBox,
 class ExportDialog(QDialog):
     def __init__(self, editor):
         super().__init__(editor)
+        from ui.help import install_help
+        install_help(self, editor)
         t = editor.tr_text
         self.setWindowTitle(t('Zapisz gotowy film', 'Export your video'))
         layout = QVBoxLayout(self)
