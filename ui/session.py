@@ -73,7 +73,7 @@ class IntegratedSpeechWindow(Window):
             source=Path(path)
             if source.stat().st_size>40_000_000:raise ValueError('Projekt jest zbyt duży / Project is too large')
             text=source.read_text(encoding='utf-8');data=json.loads(text)
-            if data.get('version') in (1,2):
+            if data.get('version') in (1,2,3):
                 self.workspace.editor.open_project(path);return
             from srtstudio.project import Project
             project=Project.loads(text)

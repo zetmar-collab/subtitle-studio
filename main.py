@@ -19,7 +19,14 @@ sys.excepthook = report_unhandled
 if __name__ == '__main__':
     import multiprocessing
     multiprocessing.freeze_support()
-    if '--ollama-correct' in sys.argv:
+    if '--mcp' in sys.argv or (getattr(sys,'frozen',False) and 'mcp' in os.path.basename(sys.executable).lower()):
+        from core.mcp_server import main
+        main([arg for arg in sys.argv[1:] if arg != '--mcp'])
+    elif '--automation-worker' in sys.argv:
+        os.environ['QT_QPA_PLATFORM']='offscreen'
+        from core.automation_worker import main
+        main(sys.argv[2:])
+    elif '--ollama-correct' in sys.argv:
         from core.ai.ollama import main
         main(sys.argv[2:])
     elif '--slideshow' in sys.argv:
@@ -56,12 +63,20 @@ if __name__ == '__main__':
             app.setOrganizationName('LocalToolsSmoke')
             from ui.window import Window
             Window.recover = lambda self: None
+        if '--automation' in sys.argv:
+            # An AI-created window starts empty; existing recovery remains available
+            # when opening the application normally.
+            from ui.window import Window
+            Window.recover = lambda self: None
         from pathlib import Path
         root = Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parent))
         app.setWindowIcon(QIcon(str(root/'assets/icon.ico')))
         workspace = Workspace()
         window = workspace.editor
         workspace.show()
+        if '--automation' in sys.argv:
+            index = sys.argv.index('--automation')
+            workspace.automation.start(sys.argv[index+1],sys.argv[index+2])
         if '--integration-smoke' in sys.argv:
             from ui.integration_smoke import run
             run(workspace, sys.argv[2:])

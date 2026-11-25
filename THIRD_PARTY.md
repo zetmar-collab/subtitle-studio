@@ -27,4 +27,8 @@ Słowniki pobrano z oficjalnego repozytorium https://github.com/LibreOffice/dict
 
 ## Moduł transkrypcji Szept
 
+Serwer MCP używa oficjalnych pakietów Python `mcp` i `mcp-types` (MIT).
+Ich metadane, zależności i licencje są zbierane przez `scripts/collect_licenses.py`
+razem z pozostałymi bibliotekami. Serwer działa lokalnie; nie wymaga klucza API.
+
 Szept (GPL-3.0-or-later) używa faster-whisper 1.2.1 (MIT), CTranslate2 4.8.4 (MIT), PyAV 19.0.2 (BSD), ONNX Runtime (MIT) i PyEnchant 3.3.0 (LGPL). Metadane i teksty licencji rzeczywiście zainstalowanych zależności zbiera scripts/collect_licenses.py. DLL Hunspell i GCC mają oddzielne zawiadomienia w assets/licenses/Szept-native. Modele nie są dołączone do instalatora.

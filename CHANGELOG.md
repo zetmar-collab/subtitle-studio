@@ -1,3 +1,19 @@
+# 0.8.0 — 2026-11-24
+
+- Banery na kolorowym tle jako osobne warstwy: tekst, font, geometria, krycie, ramka i czas widoczności. Wspólny renderer podglądu i eksportu, cofanie, przeciąganie i skalowanie.
+- Format projektu v3 dla banerów; zachowano odczyt v1/v2 i zapis v2 bez banerów.
+- Lokalny serwer MCP stdio, 24 narzędzia sterujące oknem Qt, wybrany folder, postęp i anulowanie zadań. Osobny plik konsolowy SubtitleStudio-MCP.exe w paczce Windows.
+- Pomoc banerów i instrukcja MCP, skróty Ctrl+Shift+L oraz Ctrl+Shift+M.
+- Szablony banerów: cztery wbudowane i własne (zapis wyglądu bez tekstu), także przez MCP (`template`, `studio_list_banner_templates`).
+- Animacje wejścia i wyjścia banerów: przenikanie, wjazd z czterech stron, wyskok; czas 1–5000 ms.
+- Klatki kluczowe ruchu i skali dla logo i banerów (Ctrl+K w Montażu, przeciąganie w podglądzie ustawia klatkę). Projekty z ruchem logo zapisują format v3.
+- Logo i banery na osi czasu: osobne pasy z przeciąganiem początku, końca i całej warstwy (razem z klatkami kluczowymi).
+- Bezpieczne obszary w podglądzie (Widok): telewizja, TikTok, Reels, Shorts; podgląd pionowy 9:16 (F8).
+- Eksport z przycięciem kadru zamiast pasów i wyborem położenia kadru (`fit`, `crop_x` także w MCP).
+- Tłumaczenie ścieżki napisów przez lokalną Ollamę do nowej ścieżki z tymi samymi czasami (Ctrl+Shift+U).
+- MCP: podgląd zwraca obraz PNG, dziennik poleceń AI i „Cofnij do stanu sprzed AI” w panelu, zamknięcie klienta `--root` wyłącza nasłuch okna.
+- Poprawki z audytu: wynik zadania nie ginie po Cofnij i nie trafia do innego projektu; polecenie IPC wykonuje się raz; FFmpeg i ffprobe nie blokują okna; odporny zapis statusu workera w Windows; szybsze dopasowanie tekstu banerów w eksporcie; ostrzejszy podgląd 1920 px; walidacja logo, języka transkrypcji i id zadań.
+
 # 0.7.1 — 2026-11-07
 
 - Po udanym eksporcie program pyta o odtworzenie filmu w domyślnym odtwarzaczu Windows. Dotyczy też kreatorów; kolejka pyta raz po zakończeniu serii.

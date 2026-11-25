@@ -1,5 +1,5 @@
 import copy
-from PySide6.QtCore import Qt,Signal,QRectF,QUrl,QTimer
+from PySide6.QtCore import Qt,Signal,QRectF,QUrl
 from PySide6.QtGui import QPainter,QColor,QImage,QPixmap
 from PySide6.QtMultimedia import QMediaPlayer,QAudioOutput,QVideoSink
 from PySide6.QtWidgets import (QWidget,QDialog,QVBoxLayout,QHBoxLayout,QLabel,QTableWidget,QTableWidgetItem,

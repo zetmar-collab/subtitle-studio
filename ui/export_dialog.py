@@ -20,6 +20,21 @@ class ExportDialog(QDialog):
         self.quality.addItem(t('Standardowa — mniejszy plik', 'Standard — smaller file'), 20)
         self.quality.addItem(t('Wysoka — większy plik', 'High — larger file'), 17)
         form.addRow(t('Rozmiar obrazu', 'Video size'), self.size)
+        self.framing = QComboBox()
+        self.framing.addItem(t('Cały obraz — z pasami', 'Whole picture — with bars'), 'fit')
+        self.framing.addItem(t('Wypełnij kadr — przytnij boki', 'Fill the frame — crop the sides'), 'crop')
+        form.addRow(t('Dopasowanie obrazu', 'Framing'), self.framing)
+        self.crop_x = QSpinBox(); self.crop_x.setRange(0, 100); self.crop_x.setSuffix(' %')
+        self.crop_x.setValue(int(editor.ui_settings.value('crop_x', 50) or 50))
+        self.crop_x.setToolTip(t('0% — lewa część obrazu, 50% — środek, 100% — prawa część.',
+                                 '0% — left part of the picture, 50% — center, 100% — right part.'))
+        form.addRow(t('Położenie kadru w poziomie', 'Horizontal crop position'), self.crop_x)
+        self.framing.currentIndexChanged.connect(lambda: self.crop_x.setEnabled(self.framing.currentData() == 'crop'))
+        self.crop_x.setEnabled(False)
+        source_landscape = editor.info['width'] > editor.info['height']
+        # A vertical size from a landscape video is almost always meant for TikTok/Reels/Shorts: fill the frame.
+        self.size.currentIndexChanged.connect(lambda index: self.framing.setCurrentIndex(
+            1 if index == 3 and source_landscape else self.framing.currentIndex()))
         form.addRow(t('Jakość', 'Quality'), self.quality)
         self.test = QCheckBox(t('Próba: pierwsze 10 sekund wybranego zakresu',
                                'Test: first 10 seconds of the selected range'))

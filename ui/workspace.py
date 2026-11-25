@@ -27,6 +27,10 @@ class Workspace(QMainWindow):
         self.workflow = None
         self.review_dialog = None
         self.queue = None
+        from ui.automation import Automation
+        self.automation = Automation(self)
+        self.mcp_dialog = None
+        self.translate_dialog = None
         self.editor.setWindowFlags(Qt.WindowType.Widget)
         self.setWindowIcon(self.editor.windowIcon())
         self.setWindowTitle('Subtitle Studio')
@@ -84,11 +88,13 @@ class Workspace(QMainWindow):
         self.editor.text(tools.menuAction(), 'Narzędzia', 'Tools')
         for label,callback,key in [('Krok po kroku / Step by step',self.show_workflow,'F4'),
                                ('Pisownia AI · Ollama',self.show_ai,'Ctrl+Shift+A'),
+                               ('Tłumaczenie napisów · Ollama / Translate captions · Ollama',self.show_translate,'Ctrl+Shift+U'),
                                ('Napraw synchronizację / Repair timing',self.show_repair,'Ctrl+Shift+H'),
                                ('Słowa na fali audio / Word alignment',self.editor.words_dialog,'Ctrl+Shift+W'),
                                ('Fragmenty do sprawdzenia / Review queue',self.show_review,'Ctrl+Shift+F'),
                                ('Kolejka eksportów / Export queue',self.show_queue,'Ctrl+Shift+Q'),
-                               ('Pokaz zdjęć i klipów / Slideshow',self.show_slideshow,'Ctrl+Shift+P')]:
+                               ('Pokaz zdjęć i klipów / Slideshow',self.show_slideshow,'Ctrl+Shift+P'),
+                               ('Sterowanie AI · MCP / AI control · MCP',self.show_mcp,'Ctrl+Shift+M')]:
             action = tools.addAction(label,callback)
             self.localize(action, label)
             action.setShortcut(QKeySequence(key))
@@ -117,6 +123,25 @@ class Workspace(QMainWindow):
             lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen())
         self.editor.translated.append((full_screen,'Pełny ekran','Full screen'))
         full_screen.setShortcut(QKeySequence('F11'))
+        from PySide6.QtGui import QActionGroup
+        vertical = view.addAction(self.editor.tr_text('Podgląd pionowy 9:16','Vertical 9:16 preview'))
+        vertical.setCheckable(True); vertical.setShortcut(QKeySequence('F8'))
+        vertical.toggled.connect(self.toggle_vertical_preview)
+        self.editor.translated.append((vertical,'Podgląd pionowy 9:16','Vertical 9:16 preview'))
+        self.vertical_action = vertical
+        safe_menu = view.addMenu(self.editor.tr_text('Bezpieczny obszar','Safe area'))
+        self.editor.translated.append((safe_menu.menuAction(),'Bezpieczny obszar','Safe area'))
+        group = QActionGroup(self); group.setExclusive(True)
+        self.safe_area_actions = {}
+        for key, pl, en in [(None,'Brak','None'), ('tv','Telewizja (90%)','TV title safe (90%)'),
+                            ('tiktok','TikTok','TikTok'), ('reels','Instagram Reels','Instagram Reels'),
+                            ('shorts','YouTube Shorts','YouTube Shorts')]:
+            action = safe_menu.addAction(self.editor.tr_text(pl,en))
+            action.setCheckable(True); group.addAction(action)
+            action.setChecked(self.editor.preview.safe_area == key)
+            action.triggered.connect(lambda checked=False, k=key: self.editor.set_safe_area(k))
+            self.editor.translated.append((action,pl,en))
+            self.safe_area_actions[key] = action
         self.editor.interfaceChanged.connect(self.sync_interface)
         from PySide6.QtWidgets import QApplication
         QApplication.styleHints().colorSchemeChanged.connect(self.editor.apply_theme)
@@ -127,6 +152,27 @@ class Workspace(QMainWindow):
     def localize(self, obj, label):
         parts = label.split(' / ', 1)
         self.editor.text(obj, parts[0], parts[-1])
+
+    def toggle_vertical_preview(self, enabled):
+        self.editor.set_vertical_preview(enabled)
+        action = self.safe_area_actions.get(self.editor.preview.safe_area)
+        if action:
+            action.setChecked(True)
+
+    def show_translate(self):
+        from ui.translate import TranslateDialog
+        if self.translate_dialog is None or not self.translate_dialog.process:
+            # Recreate when idle so the track list reflects the current project.
+            if self.translate_dialog is not None:
+                self.translate_dialog.closed = True; self.translate_dialog.deleteLater()
+            self.translate_dialog = TranslateDialog(self)
+        self.translate_dialog.show(); self.translate_dialog.raise_()
+
+    def show_mcp(self):
+        from ui.automation_dialog import AutomationDialog
+        if self.mcp_dialog is None:
+            self.mcp_dialog = AutomationDialog(self)
+        self.mcp_dialog.show(); self.mcp_dialog.raise_()
 
     def check_spelling(self):
         if self.tabs.currentIndex() == 1:
@@ -434,6 +480,12 @@ class Workspace(QMainWindow):
         self.tabs.setCurrentIndex(0)
 
     def closeEvent(self, event):
+        if self.translate_dialog is not None and self.translate_dialog.process:
+            self.editor.error('Najpierw anuluj tłumaczenie napisów. / Cancel the caption translation first.')
+            event.ignore(); return
+        if any(job['state']=='running' for job in self.automation.jobs.values()):
+            self.editor.error('Zakończ lub anuluj zadanie w Narzędzia → Sterowanie AI · MCP. / Finish or cancel the MCP job first.')
+            event.ignore(); return
         # Check both projects before stopping either workspace or deleting recovery.
         if hasattr(self,'ai_dialog') and self.ai_dialog.process:
             if not getattr(self,'_closing_ai',False):
@@ -470,6 +522,7 @@ class Workspace(QMainWindow):
             if widget:
                 widget.dirty = False
                 widget.close()
+        self.automation.stop()
         event.accept()
 
     def queue_stopped(self):

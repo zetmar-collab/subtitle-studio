@@ -4,7 +4,7 @@ PySide6/Qt Widgets zapewnia lokalny interfejs, czcionki systemowe, dekodowanie p
 
 ```text
 ui/window + preview + jobs
-  → core/projects        JSON v1, ścieżki względne, atomowy zapis
+  → core/projects        JSON v1/v2/v3, ścieżki względne, atomowy zapis
   → core/subtitles       pysubs2, SBV/TXT, przesunięcie i skalowanie, QC
   → core/spellcheck      spylls + lokalne słowniki Hunspell
   → core/media           ffprobe + Qt Multimedia + fala FFmpeg
@@ -16,7 +16,19 @@ ui/window + preview + jobs
 
 ## Model i kontrakty
 
-Nie ma serwera, kont ani bazy danych. Dataclasses są kontraktem między domeną i UI. `Project` zawiera wersję, wideo, ścieżki, grafiki, język, motyw i progi QC. `Segment` przechowuje całkowite ms: początek, koniec, tekst, język, flagę nadania czasów i opcjonalne słowa z absolutnymi czasami filmu. `Track` zawiera styl, widoczność i oryginalną ścieżkę importu. `Logo` ma własne czasy, położenie, szerokość i krycie. Przedziały aktywności są półotwarte `[start,end)`.
+Opcjonalny serwer MCP stdio (`core/mcp_server.py`, oficjalny SDK) przekazuje
+polecenia przez QLocalSocket do `ui/automation.py`. QLocalServer jest włączany
+przez użytkownika dla wybranego folderu i działa z UserAccessOption. Mutacje
+modelu odbywają się na wątku Qt. Media i eksport pracują w QProcess; odpowiedzi
+zawierają identyfikatory zadań. Bez portu TCP, dowolnych poleceń shell i kluczy AI.
+Stan klienta nie jest automatycznie konfigurowany. Szczegóły: [MCP](MCP.md).
+
+`Banner` jest wektorową warstwą z własną geometrią procentową, tekstem, tłem,
+obrysem, kryciem i czasami. QPainter rysuje ją po napisach i logo. Podgląd oraz
+eksport używają tego samego `draw_banner`. Zapis z banerami otrzymuje wersję 3;
+bez banerów zachowuje wersję 2. Wersje 1 i 2 są nadal odczytywane.
+
+Nie ma kont ani bazy danych. Serwer MCP jest lokalną, opcjonalną funkcją opisaną powyżej. Dataclasses są kontraktem między domeną i UI. `Project` zawiera wersję, wideo, ścieżki, grafiki, język, motyw i progi QC. `Segment` przechowuje całkowite ms: początek, koniec, tekst, język, flagę nadania czasów i opcjonalne słowa z absolutnymi czasami filmu. `Track` zawiera styl, widoczność i oryginalną ścieżkę importu. `Logo` ma własne czasy, położenie, szerokość i krycie. Przedziały aktywności są półotwarte `[start,end)`.
 
 `read/write` obsługują treść i czasy napisów. `shift/stretch` zmieniają także czasy słów. `compose(frame, project, ms)` nie zależy od zegara UI. `render(project, target, options, progress, cancelled)` wykonuje eksport i weryfikację. Plik zadania jest osobną migawką projektu; UI odbiera postęp przez mały JSON i zgłasza anulowanie plikiem sygnału. Żaden projekt nie wykonuje kodu.
 

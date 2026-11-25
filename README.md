@@ -1,5 +1,21 @@
 # Subtitle Studio — lokalny edytor napisów i logo
 
+## Wersja 0.8.0
+
+- **Banery**: ozdobny tekst na kolorowym tle, własne wymiary, pozycja, czas,
+  czcionka i ramka; przeciąganie i zmiana rozmiaru w podglądzie (`Ctrl+Shift+L`).
+- **Serwer MCP**: sterowanie otwartą aplikacją przez Codex, Claude Code i inne
+  klienty stdio — od utworzenia filmu do końcowego eksportu. Panel pod
+  `Ctrl+Shift+M`. [Podłączenie i przykłady](docs/MCP.md).
+- **Ruch i animacje**: szablony i animacje banerów, klatki kluczowe logo i banerów
+  (`Ctrl+K`), warstwy na osi czasu.
+- **Film pionowy**: bezpieczne obszary TikTok/Reels/Shorts, podgląd 9:16 (`F8`)
+  i eksport z przycięciem kadru.
+- **Tłumaczenie napisów** lokalną Ollamą do nowej ścieżki (`Ctrl+Shift+U`).
+
+Nowe funkcje wymagają uruchomienia aktualnych źródeł lub ich przebudowania.
+Poniższe publiczne pliki wydania 0.7.1 nie zawierają jeszcze tych zmian.
+
 ## Wersja 0.7.1
 
 Pytanie o odtworzenie filmu po eksporcie, pełna pomoc offline pod F1 oraz uzupełnione skróty klawiszowe. [Instrukcja i skróty](docs/POMOC.md).

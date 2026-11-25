@@ -1,6 +1,5 @@
 import copy
 import json
-import os
 from pathlib import Path
 import re
 import sys
@@ -13,12 +12,12 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QVideoSink
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QSplitter,
     QPushButton, QLabel, QListWidget, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
     QSpinBox, QDoubleSpinBox, QCheckBox, QLineEdit, QFileDialog, QMessageBox, QInputDialog,
-    QSlider, QDialog, QDialogButtonBox, QProgressBar, QGroupBox, QScrollArea, QTextEdit, QColorDialog,
+    QSlider, QDialog, QProgressBar, QScrollArea, QTextEdit, QColorDialog,
     QApplication, QAbstractSpinBox, QMenu, QToolButton)
 from core.projects.model import Project, Track, Segment, Logo, Style, save, load
 from core.subtitles.service import read, write, shift, stretch, warnings
 from core.media.tools import probe
-from core.compositor.render import image, visible_text
+from core.compositor.render import image
 from core.spellcheck.service import Spellchecker
 from ui.preview import Preview, Timeline
 from ui.jobs import Job, waveform
@@ -51,6 +50,7 @@ class Window(QMainWindow):
         self.export_temp = None
         self.active_track = 0
         self.active_logo = -1
+        self.active_banner = -1
         self.translated = []
         self.ui_settings = QSettings('LocalTools', 'SubtitleStudioInterface')
         self.store = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation))
@@ -131,6 +131,7 @@ class Window(QMainWindow):
                                 ('Otwórz film', 'Open video', 'Ctrl+O', self.open_video),
                                 ('Importuj napisy', 'Import subtitles', 'Ctrl+I', self.import_subtitles),
                                 ('Dodaj logo', 'Add logo', 'Ctrl+L', self.add_logo),
+                                ('Dodaj baner', 'Add banner', 'Ctrl+Shift+L', self.add_banner),
                                 ('Otwórz projekt', 'Open project', 'Ctrl+Shift+O', self.open_project),
                                 ('Zapisz projekt', 'Save project', 'Ctrl+S', self.save_project),
                                 ('Eksportuj napisy', 'Export subtitles', 'Ctrl+Shift+S', self.export_subtitles),
@@ -202,6 +203,7 @@ class Window(QMainWindow):
         ll.addWidget(self.text(QLabel(), 'PLIKI I WARSTWY', 'FILES & LAYERS'))
         self.layers = QListWidget()
         self.layers.currentRowChanged.connect(self.select_layer)
+        self.layers.itemDoubleClicked.connect(lambda *_: self.edit_banner() if self.active_banner >= 0 else None)
         ll.addWidget(self.layers)
         self.button('Widoczność', 'Toggle visibility', self.toggle_layer, ll)
         self.button('Warstwa w górę', 'Move layer up', self.layer_up, ll)
@@ -216,6 +218,10 @@ class Window(QMainWindow):
         self.preview = Preview()
         self.preview.project = self.project
         self.preview.moved.connect(self.move_layer)
+        self.preview.resized.connect(self.resize_banner)
+        from ui.preview import SAFE_AREAS
+        saved_area = str(self.ui_settings.value('safe_area', '') or '')
+        self.preview.safe_area = saved_area if saved_area in SAFE_AREAS else None
         self.welcome = QWidget()
         welcome_layout = QVBoxLayout(self.welcome)
         welcome_layout.addWidget(self.text(QLabel(), 'Dodaj napisy do swojego filmu', 'Add captions to your video'))
@@ -256,6 +262,13 @@ class Window(QMainWindow):
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         form.setContentsMargins(12, 0, 0, 0)
+        self.banner_hint = self.text(QLabel(), 'Baner: przeciągnij, aby przesunąć; prawy dolny uchwyt zmienia rozmiar.',
+                                     'Banner: drag to move; use the bottom-right handle to resize.')
+        self.banner_hint.setWordWrap(True)
+        form.addRow(self.banner_hint)
+        self.edit_banner_button = self.text(QPushButton(), 'Edytuj tekst i wygląd baneru…', 'Edit banner text and appearance…')
+        self.edit_banner_button.clicked.connect(self.edit_banner)
+        form.addRow(self.edit_banner_button)
         def row(pl, en, widget):
             label = self.text(QLabel(), pl, en)
             label.setBuddy(widget)
@@ -394,6 +407,8 @@ class Window(QMainWindow):
         self.timeline.seek.connect(self.player.setPosition)
         self.timeline.segmentSelected.connect(self.select_timeline_segment)
         self.timeline.segmentEdited.connect(self.edit_timeline_segment)
+        self.timeline.layerSelected.connect(self.select_timeline_layer)
+        self.timeline.layerEdited.connect(self.edit_timeline_layer)
         self.table.itemSelectionChanged.connect(self.selection_changed)
         self.timeline.zoomChanged.connect(lambda zoom: self.zoom_label.setText(f'{zoom*100:.0f}%'))
         self.timeline_scroll = QScrollArea()
@@ -411,6 +426,12 @@ class Window(QMainWindow):
                 ('Przesuń napisy w czasie…', 'Shift caption timing…', 'Ctrl+Shift+T', self.shift_dialog),
                 ('Sprawdź napisy', 'Check captions', 'Ctrl+Shift+K', self.quality_dialog)]:
             edit_menu.addAction(self.action(pl, en, key, lambda checked=False, cb=callback: self.navigate(cb)))
+        edit_menu.addSeparator()
+        edit_menu.addAction(self.action('Klatka kluczowa pozycji warstwy', 'Layer position keyframe', 'Ctrl+K',
+                                        self.add_keyframe))
+        edit_menu.addAction(self.action('Usuń klatki kluczowe warstwy', 'Clear layer keyframes', '',
+                                        self.clear_keyframes))
+        edit_menu.addSeparator()
         edit_menu.addAction(self.action('Duplikuj napisy', 'Duplicate subtitles', '', self.duplicate_segments))
         edit_menu.addAction(self.action('Usuń i domknij napisy', 'Ripple delete subtitles', '', self.ripple_segments))
         vertical.addWidget(lower); vertical.setSizes([450, 400])
@@ -574,15 +595,25 @@ class Window(QMainWindow):
         selected = self.selected()
         self.active_track = min(self.active_track, len(self.project.tracks)-1)
         self.active_logo = min(self.active_logo, len(self.project.logos)-1)
+        self.active_banner = min(self.active_banner, len(self.project.banners)-1)
+        self.preview.banner_index = self.active_banner
         self.preview.project = self.project
         self.timeline.project = self.project
+        self.timeline.setMinimumHeight(self.timeline.required_height())
+        self.timeline.layer_selection = (('banner', self.active_banner) if self.active_banner >= 0 else
+                                         (('logo', self.active_logo) if self.active_logo >= 0 else None))
         self.layers.clear()
         self.layers.addItem(Path(self.project.video).name if self.project.video else self.tr_text('Brak filmu', 'No video'))
         for t in self.project.tracks:
             self.layers.addItem(('● ' if t.visible else '○ ')+t.name)
         for l in self.project.logos:
             self.layers.addItem(('● ' if l.visible else '○ ')+'Logo · '+Path(l.path).name)
-        self.layers.setCurrentRow(1+len(self.project.tracks)+self.active_logo if self.active_logo >= 0 else self.active_track+1)
+        for banner in self.project.banners:
+            self.layers.addItem(('● ' if banner.visible else '○ ')+self.tr_text('Baner · ', 'Banner · ')+banner.name)
+        selected_layer = (1+len(self.project.tracks)+len(self.project.logos)+self.active_banner
+                          if self.active_banner >= 0 else
+                          (1+len(self.project.tracks)+self.active_logo if self.active_logo >= 0 else self.active_track+1))
+        self.layers.setCurrentRow(selected_layer)
         self.table.setHorizontalHeaderLabels([self.tr_text('Początek', 'Start'), self.tr_text('Koniec', 'End'),
             self.tr_text('Tekst', 'Text'), self.tr_text('Język', 'Language'), 'ms', self.tr_text('Kontrola jakości', 'Quality checks')])
         self.table.setRowCount(len(self.track().segments))
@@ -623,7 +654,11 @@ class Window(QMainWindow):
     def select_layer(self, row):
         if self.loading:
             return
-        self.active_logo = row-1-len(self.project.tracks) if row > len(self.project.tracks) else -1
+        logo_start = 1 + len(self.project.tracks)
+        banner_start = logo_start + len(self.project.logos)
+        self.active_banner = row-banner_start if row >= banner_start else -1
+        self.active_logo = row-logo_start if logo_start <= row < banner_start else -1
+        self.preview.banner_index = self.active_banner
         if 1 <= row <= len(self.project.tracks):
             self.active_track = row-1
             self.refresh()
@@ -632,6 +667,14 @@ class Window(QMainWindow):
 
     def show_properties(self):
         self.loading = True
+        if self.active_banner >= 0:
+            for row in range(self.properties_form.rowCount()):
+                self.properties_form.setRowVisible(row, False)
+            self.properties_form.setRowVisible(self.banner_hint, True)
+            self.properties_form.setRowVisible(self.edit_banner_button, True)
+            self.loading = False
+            self.preview.update()
+            return
         s = self.track().style
         self.font_combo.setCurrentText(s.font); self.size.setValue(s.size); self.bold.setChecked(s.bold)
         self.color.set_color(s.color); self.background.set_color(s.background); self.stroke.setValue(s.stroke)
@@ -657,10 +700,12 @@ class Window(QMainWindow):
             label = self.properties_form.itemAt(row, QFormLayout.ItemRole.LabelRole)
             if widget and label and label.widget():
                 widget.setAccessibleName(label.widget().text())
+        self.properties_form.setRowVisible(self.banner_hint, False)
+        self.properties_form.setRowVisible(self.edit_banner_button, False)
         self.loading = False
 
     def properties_changed(self, *args):
-        if self.loading:
+        if self.loading or self.active_banner >= 0:
             return
         self.checkpoint()
         s = self.track().style
@@ -720,9 +765,77 @@ class Window(QMainWindow):
         if not self.history or time.monotonic()-getattr(self, '_last_drag', 0) > 1:
             self.checkpoint()
         self._last_drag = time.monotonic()
-        obj = self.project.logos[self.active_logo] if self.active_logo >= 0 else self.track().style
-        obj.x, obj.y = x, y
-        self.show_properties(); self.preview.update()
+        obj = (self.project.banners[self.active_banner] if self.active_banner >= 0 else
+               (self.project.logos[self.active_logo] if self.active_logo >= 0 else self.track().style))
+        if getattr(obj, 'keyframes', None):
+            # An animated layer is moved by keying its position at the current time.
+            from core.compositor.render import position
+            from core.projects.model import set_keyframe
+            set_keyframe(obj, self.preview.ms, x, y, position(obj, self.preview.ms)[2]*100)
+        else:
+            obj.x, obj.y = x, y
+        self.show_properties(); self.preview.update(); self.timeline.update()
+
+    def keyframe_layer(self):
+        if self.active_banner >= 0:
+            return self.project.banners[self.active_banner]
+        if self.active_logo >= 0:
+            return self.project.logos[self.active_logo]
+        return None
+
+    def add_keyframe(self):
+        """Key the selected logo/banner at the playhead with its current position.
+
+        The first key also stores the static position at the layer start, so the
+        layer then moves from where it was to where it is dragged."""
+        from core.compositor.render import position
+        from core.projects.model import set_keyframe
+        layer = self.keyframe_layer()
+        if layer is None:
+            return self.error(self.tr_text('Zaznacz logo lub baner na liście warstw.',
+                                           'Select a logo or banner in the layer list.'))
+        ms = max(layer.start, min(self.preview.ms, layer.end-1))
+        self.checkpoint()
+        if not layer.keyframes and ms != layer.start:
+            set_keyframe(layer, layer.start, layer.x, layer.y, 100)
+        x, y, scale = position(layer, ms)
+        set_keyframe(layer, ms, x, y, scale*100)
+        self.statusBar().showMessage(self.tr_text(
+            f'Klatka kluczowa {ms/1000:.2f} s — przeciągnij warstwę w podglądzie, aby ustawić pozycję.',
+            f'Keyframe {ms/1000:.2f} s — drag the layer in the preview to set its position.'), 8000)
+        self.refresh()
+
+    def clear_keyframes(self):
+        layer = self.keyframe_layer()
+        if layer is None or not layer.keyframes:
+            return
+        self.checkpoint()
+        from core.compositor.render import position
+        layer.x, layer.y = position(layer, self.preview.ms)[:2]
+        layer.keyframes = []
+        self.refresh()
+
+    def set_vertical_preview(self, enabled):
+        """Preview the 9:16 crop that a vertical export will produce, to place layers for it."""
+        crop_x = float(self.ui_settings.value('crop_x', 50) or 50)
+        self.preview.framing = (1080, 1920, 'crop', crop_x) if enabled else None
+        if enabled and self.preview.safe_area in (None, 'tv'):
+            self.set_safe_area('tiktok')
+        self.preview.update()
+
+    def set_safe_area(self, key):
+        self.preview.safe_area = key
+        self.ui_settings.setValue('safe_area', key or '')
+        self.preview.update()
+
+    def resize_banner(self, width, height):
+        if self.active_banner >= 0:
+            if time.monotonic()-getattr(self, '_last_drag', 0) > 1:
+                self.checkpoint()
+            self._last_drag = time.monotonic()
+            banner = self.project.banners[self.active_banner]
+            banner.width, banner.height = width, height
+            self.preview.update()
 
     def anchor(self, index):
         self.checkpoint()
@@ -832,6 +945,30 @@ class Window(QMainWindow):
         self.refresh()
         self.table.selectRow(row)
         self.table.scrollToItem(self.table.item(row,2))
+
+    def select_timeline_layer(self, kind, index):
+        logo_start = 1 + len(self.project.tracks)
+        row = logo_start + index if kind == 'logo' else logo_start + len(self.project.logos) + index
+        self.layers.setCurrentRow(row)
+
+    def edit_timeline_layer(self, kind, index, start, end, mode='move'):
+        """Apply a timeline drag to a logo/banner; moving the whole bar also moves its keyframes."""
+        layers = self.project.logos if kind == 'logo' else self.project.banners
+        if not 0 <= index < len(layers) or not 0 <= start < end:
+            return
+        layer = layers[index]
+        if (start, end) == (layer.start, layer.end):
+            return
+        self.checkpoint()
+        if mode == 'move' and layer.keyframes:
+            delta = start - layer.start
+            frames = {}
+            for frame in layer.keyframes:
+                ms = max(0, min(self.timeline.FOREVER, frame['ms'] + delta))
+                frames.setdefault(ms, dict(frame, ms=ms))  # clamping may merge keys; keep the first
+            layer.keyframes = sorted(frames.values(), key=lambda frame: frame['ms'])
+        layer.start, layer.end = start, end
+        self.refresh()
 
     def edit_timeline_segment(self, track, row, start, end):
         segment = self.project.tracks[track].segments[row]
@@ -964,18 +1101,51 @@ class Window(QMainWindow):
                 image(path)
                 self.checkpoint(); self.project.logos.append(Logo(path=str(Path(path).resolve())))
                 self.active_logo = len(self.project.logos)-1
+                self.active_banner = -1
                 self.refresh(); self.layers.setCurrentRow(1+len(self.project.tracks)+self.active_logo)
             except Exception as e:
                 self.error(e)
 
+    def add_banner(self):
+        if len(self.project.banners) >= 64:
+            return self.error(self.tr_text('Limit 64 banerów.', 'Limit: 64 banners.'))
+        from ui.banner import BannerDialog
+        dialog = BannerDialog(self)
+        if dialog.exec():
+            self.checkpoint()
+            self.project.banners.append(dialog.value.validate())
+            self.active_banner = len(self.project.banners)-1
+            self.active_logo = -1
+            self.refresh()
+
+    def edit_banner(self):
+        if not 0 <= self.active_banner < len(self.project.banners):
+            return
+        from ui.banner import BannerDialog
+        index = self.active_banner
+        dialog = BannerDialog(self, self.project.banners[index])
+        if dialog.exec():
+            self.checkpoint()
+            self.project.banners[index] = dialog.value.validate()
+            self.refresh()
+
     def toggle_layer(self):
         self.checkpoint()
-        obj = self.project.logos[self.active_logo] if self.active_logo >= 0 else self.track()
+        obj = (self.project.banners[self.active_banner] if self.active_banner >= 0 else
+               (self.project.logos[self.active_logo] if self.active_logo >= 0 else self.track()))
         obj.visible = not obj.visible; self.refresh()
 
     def layer_up(self):
+        # Only record an undo step when a layer can actually move.
+        if not (self.active_banner > 0 or (self.active_banner < 0 and
+                (self.active_logo > 0 or (self.active_logo < 0 and self.active_track > 0)))):
+            return
         self.checkpoint()
-        if self.active_logo > 0:
+        if self.active_banner > 0:
+            i = self.active_banner
+            self.project.banners[i-1], self.project.banners[i] = self.project.banners[i], self.project.banners[i-1]
+            self.active_banner -= 1
+        elif self.active_logo > 0:
             i = self.active_logo; self.project.logos[i-1], self.project.logos[i] = self.project.logos[i], self.project.logos[i-1]
             self.active_logo -= 1
         elif self.active_logo < 0 and self.active_track > 0:
@@ -985,7 +1155,9 @@ class Window(QMainWindow):
 
     def delete_layer(self):
         self.checkpoint()
-        if self.active_logo >= 0:
+        if self.active_banner >= 0:
+            del self.project.banners[self.active_banner]; self.active_banner = -1
+        elif self.active_logo >= 0:
             del self.project.logos[self.active_logo]; self.active_logo = -1
         elif len(self.project.tracks) > 1:
             del self.project.tracks[self.active_track]; self.active_track = 0
@@ -1346,8 +1518,16 @@ class Window(QMainWindow):
         dialog = ExportDialog(self)
         profile, size, fps, crf = dialog.profile, dialog.size, dialog.fps, dialog.crf
         test, selected_range = dialog.test, dialog.selected_range
+        if self.preview.framing:
+            # Start from the framing the user is already previewing.
+            width, height, mode, crop_x = self.preview.framing
+            if (width, height) == (1080, 1920):
+                size.setCurrentIndex(3)
+            dialog.framing.setCurrentIndex(dialog.framing.findData(mode)); dialog.crop_x.setValue(round(crop_x))
         if not dialog.exec():
             return
+        framing, crop_x = dialog.framing.currentData(), dialog.crop_x.value()
+        self.ui_settings.setValue('crop_x', crop_x)
         idx = profile.currentIndex(); suffix = ['mp4','mp4','webm','mkv'][idx]
         target, _ = QFileDialog.getSaveFileName(self, self.tr_text('Zapisz film', 'Save video'), '', f'Video (*.{suffix})')
         if not target:
@@ -1357,7 +1537,8 @@ class Window(QMainWindow):
         if Path(target).suffix.lower() != '.'+suffix:
             return self.error(self.tr_text('Rozszerzenie pliku musi odpowiadać profilowi.', 'File extension must match profile.'))
         dimensions = [(self.info['width'],self.info['height']), (1920,1080),(3840,2160),(1080,1920),(1080,1080)][size.currentIndex()]
-        opts = dict(width=dimensions[0], height=dimensions[1], fps=fps.value(), crf=crf.value(), codec=['libx264','libx265','libvpx-vp9','libx264'][idx])
+        opts = dict(width=dimensions[0], height=dimensions[1], fps=fps.value(), crf=crf.value(),
+                    codec=['libx264','libx265','libvpx-vp9','libx264'][idx], fit=framing, crop_x=crop_x)
         if test.isChecked():
             opts['seconds'] = 10
         if selected_range.isChecked():
@@ -1378,7 +1559,8 @@ class Window(QMainWindow):
         save(self.project, folder/'project.json')
         (folder/'options.json').write_text(json.dumps(opts))
         self.export_status = folder/'status.json'; self.export_cancel = folder/'cancel'
-        self.preview.output_size = (opts['width'], opts['height']); self.preview.update()
+        self.preview.output_size = (opts['width'], opts['height'], opts.get('fit', 'fit'), opts.get('crop_x', 50))
+        self.preview.update()
         self.export_process = QProcess(self)
         self.export_process.finished.connect(self.finish_export)
         self.export_process.errorOccurred.connect(self.export_error)

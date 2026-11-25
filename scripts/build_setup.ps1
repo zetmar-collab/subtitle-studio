@@ -4,6 +4,12 @@ Set-Location -LiteralPath (Split-Path -Parent $PSScriptRoot)
 if (-not (Test-Path -LiteralPath 'dist/SubtitleStudio/SubtitleStudio.exe')) {
     throw 'Build the portable application first with scripts/build.ps1.'
 }
+foreach ($requiredFile in @('SubtitleStudio-MCP.exe', 'docs/MCP.md', 'docs/POMOC.md')) {
+    $requiredPath = Join-Path 'dist/SubtitleStudio' $requiredFile
+    if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+        throw "Installer input is missing: $requiredPath"
+    }
+}
 if (-not $Compiler) {
     $localCompiler = Join-Path (Get-Location) 'build/tools/inno/ISCC.exe'
     $installedCompiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue

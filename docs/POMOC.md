@@ -25,6 +25,76 @@ rozdziału, a „Spis treści” do tej strony. Escape zamyka okno pomocy.
 Masz gotowy plik napisów? Zamiast rozpoznawania użyj **Importuj napisy**.
 Masz tylko zdjęcie i nagranie? Skorzystaj z **Więcej → Obraz + audio**.
 
+## Banery — ozdobne napisy na kolorowym tle
+
+Kliknij **Dodaj baner** lub naciśnij **Ctrl+Shift+L**. Wpisz tekst, wybierz kolory,
+czcionkę, ramkę oraz zaokrąglenie. Ustaw szerokość i wysokość niezależnie,
+w procentach kadru. X i Y wskazują środek banera.
+
+Przeciągnij baner w podglądzie, aby go przenieść. Uchwyt w prawym dolnym rogu
+zmienia wielkość. Pola liczbowe pozwalają podać dokładne wartości.
+**Dopasuj tekst do prostokąta** zmniejsza zbyt duży tekst. Początek i koniec
+określają widoczność w milisekundach; domyślnie baner trwa cały film.
+
+Zatwierdź przyciskiem **Zapisz**. Dwuklik warstwy banera otwiera ponowną edycję.
+Warstwę można ukrywać, usuwać i przesuwać wyżej wśród banerów. Banery rysowane są
+nad napisami i logo. Cofanie działa także dla banerów. Zapis projektu zachowuje
+ich właściwości; eksport umieszcza je w obrazie filmu. Projekty z banerami mają
+format v3 i wymagają wersji programu obsługującej banery.
+
+**Szablon** w oknie banera nadaje gotowy wygląd: kolory, czcionkę, geometrię
+i animację; tekst zostaje bez zmian. **Zapisz jako…** tworzy własny szablon,
+**Usuń** kasuje własny (wbudowanych nie można usunąć).
+
+**Animacja wejścia i wyjścia** pokazuje baner przez przenikanie, wjazd lub wyskok
+na początku i chowa go tak samo na końcu. **Czas animacji** określa długość obu przejść.
+
+### Ruch logo i banerów — klatki kluczowe
+
+Zaznacz logo lub baner, ustaw czas na osi i wybierz **Montaż → Klatka kluczowa
+pozycji warstwy** (`Ctrl+K`). Pierwsza klatka zapamiętuje także pozycję z początku
+warstwy. Gdy warstwa ma klatki, przeciągnięcie jej w podglądzie ustawia klatkę
+w bieżącym czasie; między klatkami pozycja i skala zmieniają się płynnie.
+**Usuń klatki kluczowe warstwy** zostawia warstwę w miejscu z bieżącej chwili.
+
+### Warstwy na osi czasu
+
+Pod napisami oś pokazuje pasy logo (zielone) i banerów (fioletowe) z klatkami
+kluczowymi jako romby. Przeciągnij krawędź pasa, aby zmienić początek lub koniec,
+albo środek — aby przesunąć całą warstwę razem z jej ruchem. Warstwa trwająca
+do końca filmu pozostaje otwarta po przesunięciu.
+
+## Bezpieczne obszary i film pionowy
+
+**Widok → Bezpieczny obszar** zaznacza w podglądzie strefy zasłaniane przez
+interfejs TikToka, Instagram Reels i YouTube Shorts lub margines telewizyjny.
+Granice są orientacyjne i nie trafiają do eksportu.
+**Widok → Podgląd pionowy 9:16** (`F8`) pokazuje kadr 1080×1920 przycięty
+z filmu poziomego, aby ustawić napisy i warstwy pod film pionowy.
+
+W eksporcie **Dopasowanie obrazu → Wypełnij kadr** przycina boki zamiast
+dodawać pasy; **Położenie kadru** wybiera część obrazu (0% lewa, 50% środek,
+100% prawa). Rozmiar 1080 × 1920 z filmu poziomego wybiera przycięcie
+automatycznie. Położenia warstw w procentach dotyczą eksportowanego kadru,
+więc projekt ma jeden układ warstw — dla wersji poziomej i pionowej z różnym
+układem zapisz projekt pod dwiema nazwami.
+
+## Tłumaczenie napisów przez Ollamę
+
+**Narzędzia → Tłumaczenie napisów · Ollama** (`Ctrl+Shift+U`) wysyła tekst wybranej
+ścieżki tylko do lokalnej Ollamy i dodaje NOWĄ ścieżkę w języku docelowym
+z tymi samymi czasami i stylem. Oryginał się nie zmienia. Czasy słów nie są
+przenoszone; wyrównaj je ponownie, jeśli chcesz podświetlać słowa.
+
+## Sterowanie przez Codex, Claude Code i inne AI
+
+**Narzędzia → Sterowanie AI · MCP** (`Ctrl+Shift+M`) pozwala udostępnić wybrany
+folder projektu i skopiować konfigurację klienta. Agent może tworzyć film,
+dodawać warstwy i napisy, zapisywać podgląd oraz eksportować wynik. Panel pokazuje
+postęp i pozwala anulować zadanie. Dziennik poleceń pokazuje zmiany AI, a
+**Cofnij do stanu sprzed AI** przywraca projekt sprzed pierwszej zmiany w tym
+połączeniu (to też można cofnąć `Ctrl+Z`). [Pełna instrukcja i przykłady MCP](MCP.md).
+
 ## Pliki, projekty i kopie awaryjne
 
 **Zapisz projekt / Zapisz sesję** zapisuje plik JSON z tekstem, czasami,
@@ -181,6 +251,11 @@ Delete, Insert, spacja, strzałki i I/O nie powinny uruchamiać montażu.
 | Ctrl+Shift+F | Fragmenty do sprawdzenia |
 | Ctrl+Shift+Q | Kolejka eksportów |
 | Ctrl+Shift+P | Pokaz zdjęć i klipów |
+| Ctrl+Shift+L | Dodaj baner |
+| Ctrl+Shift+M | Sterowanie AI · MCP |
+| Ctrl+Shift+U | Tłumaczenie napisów przez Ollamę |
+| Ctrl+K | Klatka kluczowa pozycji zaznaczonej warstwy |
+| F8 | Podgląd pionowy 9:16 |
 
 ### Karta Film i napisy
 
