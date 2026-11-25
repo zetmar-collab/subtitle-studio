@@ -560,23 +560,37 @@ class Automation(QObject):
         return self.job_public(job)
 
     def finished(self, job, code):
-        if job['state']!='running':
+        if job['state']!='running' or job.get('finishing'):
             return
+        # The job stays 'running' (so busy() rejects edits and get_job reports it
+        # unfinished) until its result is in the editor: applying it may wait for
+        # ffprobe in background(), which processes other IPC requests meanwhile.
+        job['finishing'] = True
+        previous_call, self.in_call = self.in_call, True
+        try:
+            self.apply_result(job, code)
+        finally:
+            self.in_call = previous_call
+            job.pop('finishing', None)
+        job['process'].deleteLater()
+        job['temp'].cleanup()
+        self.editor.statusBar().showMessage('AI · '+job['kind']+' · '+job['state'],15000)
+
+    def apply_result(self, job, code):
         try:
             result = json.loads(job['status'].read_text(encoding='utf-8'))
         except (OSError,ValueError):
             result = {}
         success = code==0 and result.get('done')
-        job['state']='done' if success else ('cancelled' if job['cancel'].exists() else 'error')
-        job['percent']=100 if success else 0
-        job['error']='' if success else result.get('error','Worker failed or was cancelled')
+        state = 'done' if success else ('cancelled' if job['cancel'].exists() else 'error')
+        error = '' if success else result.get('error','Worker failed or was cancelled')
         try:
             if success and (job['auto_open'] or job['kind']=='transcribe') and job['document']!=self.document_key():
                 # Never apply a result to a different document, but never report it as applied either.
-                job['state']='error'
-                job['error']=('Projekt w edytorze zmienił się w trakcie zadania; wynik nie został wstawiony. '
-                              '/ The open project changed during the job; the result was not applied.'
-                              + (f' File: {job["target"]}' if job['target'] else ''))
+                state = 'error'
+                error = ('Projekt w edytorze zmienił się w trakcie zadania; wynik nie został wstawiony. '
+                         '/ The open project changed during the job; the result was not applied.'
+                         + (f' File: {job["target"]}' if job['target'] else ''))
             elif success:
                 if job['auto_open']:
                     self.editor.set_video(job['target'],self.background(probe, job['target']))
@@ -595,8 +609,8 @@ class Automation(QObject):
                     self.editor.active_track=len(self.editor.project.tracks)-1
                     speech.dirty=True; speech.reset_history(); speech.render()
                     self.editor.refresh()
-        except Exception as error:
-            job['state']='error'; job['error']=str(error)
-        job['process'].deleteLater()
-        job['temp'].cleanup()
-        self.editor.statusBar().showMessage('AI · '+job['kind']+' · '+job['state'],15000)
+        except Exception as failure:
+            state, error = 'error', str(failure)
+        job['percent'] = 100 if state == 'done' else 0
+        job['error'] = error
+        job['state'] = state  # last: only now may clients see the job as finished

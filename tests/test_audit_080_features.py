@@ -350,3 +350,30 @@ def test_translated_track_keeps_times_and_style():
     assert track.segments[0].words == [] and track.segments[0].language == 'en'
     assert not track.segments[1].review and track.style.color == '#ff0000' and track.track_id != source.track_id
     Project.from_data(Project(tracks=[source, track]).data())
+
+
+def test_job_reports_running_until_its_result_is_applied(workspace, tmp_path):
+    """Applying a result may wait for ffprobe in a nested event loop; clients must
+    not see 'done' (and must not edit) before the video is actually loaded."""
+    a = workspace.automation
+
+    class Process:
+        def deleteLater(self): pass
+    temp = tempfile.TemporaryDirectory()
+    status = Path(temp.name)/'status.json'; status.write_text(json.dumps({'done': True}))
+    job = dict(id='j', kind='color', state='running', percent=0, target=str(tmp_path/'new.mp4'), error='',
+               process=Process(), temp=temp, status=status, cancel=Path(temp.name)/'cancel', auto_open=True,
+               document=a.document_key())
+    a.jobs['j'] = job
+    seen = {}
+    def background(function, *args):
+        seen['state'] = a.call('job', {'job_id': 'j'})['state']
+        try:
+            a.call('banner', {'properties': {}})
+        except ValueError as error:
+            seen['edit'] = str(error)
+        return dict(width=320, height=180, duration=1000, fps=25, streams=[])
+    a.background = background
+    a.finished(job, 0)
+    assert seen['state'] == 'running' and 'Finish the running job' in seen['edit']
+    assert job['state'] in ('done', 'error') and not a.in_call
