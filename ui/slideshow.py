@@ -1,4 +1,3 @@
-from pathlib import Path
 from PySide6.QtWidgets import (QTableWidget,QTableWidgetItem,QPushButton,QHBoxLayout,QLabel,
                               QFileDialog,QLineEdit,QComboBox,QDoubleSpinBox,QCheckBox)
 from ui.media_job import MediaJobDialog

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import copy
 import json
-import locale
 import multiprocessing as mp
 import queue
 import re
@@ -11,7 +9,7 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QLocale, QSettings, Qt, QTimer, QUrl, QTranslator, QLibraryInfo
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QKeySequence, QPalette, QTextCursor
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QKeySequence, QPalette, QTextCursor
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox, QFileDialog,
                                QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMainWindow, QMessageBox,

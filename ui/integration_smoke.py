@@ -35,7 +35,7 @@ def run(workspace, args):
     errors = []
     speech.error = lambda error: errors.append(str(error))
     workspace.editor.error = lambda error: errors.append(str(error))
-    from srtstudio.project import Project, Segment
+    from srtstudio.project import Segment
     report = dict(ok=False, frozen=bool(__import__('sys').frozen) if hasattr(__import__('sys'),'frozen') else False)
     state = {'stage':'probe', 'started':time.monotonic()}
     if video_asr:

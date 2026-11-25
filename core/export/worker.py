@@ -54,6 +54,9 @@ def render(project, target, options, progress=lambda p: None, cancelled=lambda: 
     mode=options.get('fit','fit')
     if mode not in ('fit','crop'):
         raise ValueError('Nieprawidłowy tryb kadrowania / Invalid framing mode')
+    crop_x=options.get('crop_x',50)
+    if type(crop_x) not in (int,float) or not math.isfinite(crop_x) or not 0<=crop_x<=100:
+        raise ValueError('Położenie kadru musi mieć 0–100% / Crop position must be 0–100%')
     fd, tempname = tempfile.mkstemp(prefix='.subtitle-', suffix=target.suffix, dir=target.parent)
     os.close(fd)
     temp = Path(tempname)
@@ -79,7 +82,7 @@ def render(project, target, options, progress=lambda p: None, cancelled=lambda: 
     try:
         with tempfile.TemporaryFile() as decode_log, tempfile.TemporaryFile() as encode_log:
             vf = (f'scale={w}:{h}:force_original_aspect_ratio={"decrease" if mode=="fit" else "increase"}:force_divisible_by=2,'
-                  + (f'pad={w}:{h}:(ow-iw)/2:(oh-ih)/2' if mode=='fit' else f'crop={w}:{h}:(iw-ow)/2:(ih-oh)/2')
+                  + (f'pad={w}:{h}:(ow-iw)/2:(oh-ih)/2' if mode=='fit' else f'crop={w}:{h}:(iw-ow)*{crop_x/100:.4f}:(ih-oh)/2')
                   + f',setsar=1,fps={fps}')
             decoder = subprocess.Popen([binary('ffmpeg'), '-v', 'error', '-nostdin', '-ss', str(start), '-i', project.video,
                                         '-t', str(duration), '-vf', vf, '-an', '-sn', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1'],

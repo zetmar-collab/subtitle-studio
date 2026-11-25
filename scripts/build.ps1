@@ -14,6 +14,14 @@ Copy-Item -LiteralPath examples -Destination dist/SubtitleStudio -Recurse -Force
 if ($LASTEXITCODE -ne 0) { throw 'License collection failed' }
 & $Python scripts/check_package.py
 if ($LASTEXITCODE -ne 0) { throw 'Packaged executable verification failed' }
+$previousMcpPackage = $env:SUBTITLE_STUDIO_TEST_PACKAGE
+try {
+    $env:SUBTITLE_STUDIO_TEST_PACKAGE = (Resolve-Path -LiteralPath 'dist/SubtitleStudio').Path
+    & $Python -m pytest tests/test_banners_mcp.py -k 'real_stdio or legacy_mcp' -q
+    if ($LASTEXITCODE -ne 0) { throw 'Packaged MCP verification failed' }
+} finally {
+    $env:SUBTITLE_STUDIO_TEST_PACKAGE = $previousMcpPackage
+}
 Copy-Item -LiteralPath docs -Destination dist/SubtitleStudio -Recurse -Force
 Copy-Item -LiteralPath examples -Destination dist/SubtitleStudio -Recurse -Force
 Compress-Archive -Path dist/SubtitleStudio -DestinationPath dist/SubtitleStudio-Windows-x64.zip -Force

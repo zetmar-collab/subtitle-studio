@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -37,11 +38,18 @@ try:
     source = root/'dist/SubtitleStudio/SubtitleStudio.exe'
     installed = destination/'SubtitleStudio.exe'
     assert installed.read_bytes() == source.read_bytes()
+    assert (destination/'SubtitleStudio-MCP.exe').read_bytes() == (root/'dist/SubtitleStudio/SubtitleStudio-MCP.exe').read_bytes()
+    assert (destination/'docs/MCP.md').is_file()
     assert not (destination/'_internal/icuuc.dll').exists()
     report['installation'] = 'passed'
     report['installed_exe_sha256'] = hashlib.sha256(installed.read_bytes()).hexdigest()
     subprocess.run([sys.executable,str(root/'scripts/check_package.py'),str(destination)],check=True,timeout=90)
     report['installed_application_preview_and_export'] = 'passed'
+    env = os.environ.copy()
+    env['SUBTITLE_STUDIO_TEST_PACKAGE'] = str(destination)
+    subprocess.run([sys.executable,'-m','pytest',str(root/'tests/test_banners_mcp.py'),
+                    '-k','real_stdio or legacy_mcp','-q'],env=env,cwd=root,check=True,timeout=90)
+    report['installed_mcp_creation_and_export'] = 'passed'
 finally:
     uninstaller = destination/'unins000.exe'
     if uninstaller.exists():

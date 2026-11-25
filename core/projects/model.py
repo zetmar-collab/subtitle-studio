@@ -74,6 +74,88 @@ class Logo:
     start: int = 0
     end: int = 2147483647
     visible: bool = True
+    keyframes: list = field(default_factory=list)
+
+
+BANNER_ANIMATIONS = ('none', 'fade', 'slide_up', 'slide_down', 'slide_left', 'slide_right', 'pop')
+
+
+def validate_keyframes(keyframes):
+    """Keyframes are [{ms, x, y, scale}] with strictly increasing ms; x/y in %, scale in % (10..400)."""
+    def number(value, low, high):
+        return type(value) in (int, float) and math.isfinite(value) and low <= value <= high
+    if not isinstance(keyframes, list) or len(keyframes) > 200:
+        raise ValueError('Limit 200 klatek kluczowych / Limit: 200 keyframes')
+    previous = -1
+    for frame in keyframes:
+        if (not isinstance(frame, dict) or set(frame) != {'ms', 'x', 'y', 'scale'}
+                or type(frame['ms']) is not int or not previous < frame['ms'] <= 2147483647
+                or not number(frame['x'], 0, 100) or not number(frame['y'], 0, 100)
+                or not number(frame['scale'], 10, 400)):
+            raise ValueError('Nieprawidłowe klatki kluczowe / Invalid keyframes: {ms, x, y, scale}, rosnące ms')
+        previous = frame['ms']
+    return keyframes
+
+
+def set_keyframe(layer, ms, x, y, scale=100):
+    """Insert or replace the keyframe at ms, keeping the list sorted."""
+    frames = [frame for frame in layer.keyframes if frame['ms'] != ms]
+    frames.append({'ms': int(ms), 'x': float(x), 'y': float(y), 'scale': float(scale)})
+    layer.keyframes = validate_keyframes(sorted(frames, key=lambda frame: frame['ms']))
+
+
+@dataclass
+class Banner:
+    name: str = 'Baner'
+    text: str = 'Twój napis'
+    x: float = 50
+    y: float = 20
+    width: float = 70
+    height: float = 16
+    font: str = 'Arial'
+    font_size: int = 64
+    bold: bool = True
+    color: str = '#ffffff'
+    background: str = '#7546c7'
+    border_color: str = '#ffffff'
+    border_width: int = 0
+    radius: int = 20
+    padding: int = 16
+    opacity: float = 100
+    start: int = 0
+    end: int = 2147483647
+    visible: bool = True
+    align: str = 'center'
+    auto_fit: bool = True
+    banner_id: str = field(default_factory=lambda: uuid4().hex)
+    animation: str = 'none'
+    animation_ms: int = 400
+    keyframes: list = field(default_factory=list)
+
+    def validate(self):
+        from PySide6.QtGui import QColor
+        def number(value, low, high):
+            return type(value) in (int, float) and math.isfinite(value) and low <= value <= high
+        if (not isinstance(self.text, str) or len(self.text) > 10000
+                or not isinstance(self.name, str) or len(self.name) > 256
+                or not isinstance(self.font, str) or len(self.font) > 256
+                or not isinstance(self.banner_id, str) or not self.banner_id or len(self.banner_id) > 128
+                or any(type(value) is not bool for value in (self.bold, self.visible, self.auto_fit))
+                or not all(number(value, 0, 100) for value in (self.x, self.y, self.opacity))
+                or not all(number(value, 1, 100) for value in (self.width, self.height))
+                or any(type(value) is not int for value in
+                       (self.font_size, self.border_width, self.radius, self.padding, self.start, self.end))
+                or not 8 <= self.font_size <= 300 or not 0 <= self.border_width <= 30
+                or not 0 <= self.radius <= 300 or not 0 <= self.padding <= 200
+                or not 0 <= self.start < self.end <= 2147483647
+                or self.align not in ('left', 'center', 'right')
+                or self.animation not in BANNER_ANIMATIONS
+                or type(self.animation_ms) is not int or not 1 <= self.animation_ms <= 5000
+                or any(not isinstance(value, str) or not QColor(value).isValid()
+                       for value in (self.color, self.background, self.border_color))):
+            raise ValueError('Nieprawidłowe właściwości baneru / Invalid banner properties.')
+        validate_keyframes(self.keyframes)
+        return self
 
 
 @dataclass
@@ -89,18 +171,35 @@ class Project:
     range_end: int | None = None
     transcript: dict | None = None
     linked_track: str = ''
+    banners: list[Banner] = field(default_factory=list)
 
     def data(self):
-        return asdict(self)
+        data = asdict(self)
+        # Projects without 0.8 features stay version 2 so 0.7.x can still open them.
+        for logo in data['logos']:
+            if not logo['keyframes']:
+                logo.pop('keyframes')
+        if self.banners or any(logo.keyframes for logo in self.logos):
+            data['version'] = 3
+        else:
+            data.pop('banners')
+            data['version'] = 2
+        return data
 
     @classmethod
     def from_data(cls, data):
         if not isinstance(data, dict):
             raise ValueError('Projekt musi być obiektem JSON / Project must be a JSON object.')
-        if data.get('version') not in (1,2):
+        if data.get('version') not in (1,2,3):
             raise ValueError('Nieobsługiwana wersja projektu / Unsupported project version')
         d = copy.deepcopy(data)
-        d['version'] = 2
+        d['version'] = 3 if d.get('banners') or any(
+            isinstance(logo, dict) and logo.get('keyframes') for logo in d.get('logos', [])) else 2
+        if not isinstance(d.get('banners', []), list) or len(d.get('banners', [])) > 64:
+            raise ValueError('Limit 64 banerów / Limit: 64 banners')
+        d['banners'] = [Banner(**item).validate() for item in d.get('banners', [])]
+        if len({banner.banner_id for banner in d['banners']}) != len(d['banners']):
+            raise ValueError('Powtórzony identyfikator baneru / Duplicate banner identifier')
         d['tracks'] = [Track(name=t['name'], visible=t['visible'],
                             style=Style(**t['style']), segments=[Segment(**s) for s in t['segments']], source=t.get('source',''),
                             track_id=t.get('track_id') or uuid4().hex)
@@ -157,11 +256,15 @@ class Project:
                 if (segment.words and all('text' in word for word in segment.words)
                         and ' '.join(' '.join(word['text'] for word in segment.words).split()) != ' '.join(segment.text.split())):
                     raise ValueError('Czasy słów nie odpowiadają treści / Word alignment differs from text')
+        def number(value, low, high):
+            return type(value) in (int, float) and math.isfinite(value) and low <= value <= high
         for logo in result.logos:
             if (not isinstance(logo.path,str) or type(logo.start) is not int or type(logo.end) is not int
                     or type(logo.visible) is not bool or not 0<=logo.start<logo.end
-                    or not (0 <= logo.x <= 100 and 0 <= logo.y <= 100 and 1 <= logo.width <= 100 and 0 <= logo.opacity <= 100)):
+                    or not (number(logo.x, 0, 100) and number(logo.y, 0, 100)
+                            and number(logo.width, 1, 100) and number(logo.opacity, 0, 100))):
                 raise ValueError('Nieprawidłowe właściwości logo.')
+            validate_keyframes(logo.keyframes)
         return result
 
 

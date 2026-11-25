@@ -14,7 +14,25 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install --require-hashes -r requirements-lock.txt
       - run: python -m pip install -r requirements-dev.txt ruff
-      - run: choco install ffmpeg -y --no-progress
+      # Chocolatey can report success while installing nothing ("installed 0/0 packages"),
+      # so download a static build and fail loudly if ffmpeg/ffprobe are not usable.
+      - name: Install FFmpeg
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg.zip'
+          $dir = Join-Path $env:RUNNER_TEMP 'ffmpeg'
+          Invoke-WebRequest -Uri 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip' -OutFile $zip
+          Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force
+          $bin = (Get-ChildItem -LiteralPath $dir -Recurse -Filter ffmpeg.exe | Select-Object -First 1).DirectoryName
+          if (-not $bin) { throw 'ffmpeg.exe not found in the downloaded archive' }
+          foreach ($tool in 'ffmpeg', 'ffprobe') {
+            # Collect all output first: stopping the pipeline early (Select-Object -First)
+            # terminates the process and makes $LASTEXITCODE non-zero.
+            $output = & (Join-Path $bin "$tool.exe") -version
+            if ($LASTEXITCODE -ne 0) { throw "$tool is not usable" }
+            $output[0]
+          }
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $bin
       - run: python scripts/create_demo.py
       - run: python -m pytest -q
       - run: python -m ruff check core ui srtstudio main.py --select E9,F63,F7,F82

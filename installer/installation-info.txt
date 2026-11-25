@@ -1,4 +1,4 @@
-SUBTITLE STUDIO 0.7.1
+SUBTITLE STUDIO 0.8.0
 
 PL
 Instalator dodaje aplikację dla bieżącego użytkownika, bez wymagania konta administratora.
@@ -6,6 +6,7 @@ Python nie jest potrzebny. Do analizy i eksportu filmów wymagane są ffmpeg.exe
 
 Program łączy edytor filmu i lokalną transkrypcję Szept. Modele mowy nie są dołączone; można wskazać istniejący model lub pobrać go jawnie w aplikacji. Po przygotowaniu modelu transkrypcja pracuje lokalnie. Materiały demonstracyjne, instrukcja i informacje o licencjach zostaną zainstalowane razem z aplikacją. Rzeczywisty zakres funkcji opisuje docs/STATUS.md.
 Opcjonalna korekta AI wymaga oddzielnie uruchomionej Ollamy i pobranego lokalnego modelu.
+Banery pozwalają ustawić ozdobny tekst na kolorowym tle, jego rozmiar i położenie. Opcjonalny lokalny serwer MCP umożliwia sterowanie programem przez Codex, Claude Code i inne klienty AI. Połączenie włącza użytkownik dla wybranego folderu projektu w Narzędzia → Sterowanie AI · MCP.
 Deinstalator usuwa pliki programu; nie usuwa zapisanych projektów ani danych użytkownika.
 
 EN
@@ -14,4 +15,5 @@ Python is not required. Media analysis and export require ffmpeg.exe and ffprobe
 
 The application combines video editing and local Szept transcription. Speech models are not bundled: select an existing model or explicitly download one in the app. Transcription runs locally once a model is available. Demo files, instructions and third-party notices are included. See docs/STATUS.md for implemented features and limitations.
 Optional AI correction requires a separately running Ollama server and a downloaded local model.
+Banners support decorative text on a colored background with editable size and position. The optional local MCP server enables control through Codex, Claude Code and other AI clients. Enable access to a chosen project folder in Tools → AI control · MCP.
 Uninstalling removes program files and preserves saved projects and user data.

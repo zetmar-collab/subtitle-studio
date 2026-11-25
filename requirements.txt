@@ -6,3 +6,4 @@ faster-whisper==1.2.1
 ctranslate2==4.8.4
 av==19.0.2
 pyenchant==3.3.0
+mcp==2.3.0
