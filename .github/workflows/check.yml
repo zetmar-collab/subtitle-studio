@@ -25,9 +25,13 @@ jobs:
           Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force
           $bin = (Get-ChildItem -LiteralPath $dir -Recurse -Filter ffmpeg.exe | Select-Object -First 1).DirectoryName
           if (-not $bin) { throw 'ffmpeg.exe not found in the downloaded archive' }
-          & (Join-Path $bin 'ffmpeg.exe') -version | Select-Object -First 1
-          & (Join-Path $bin 'ffprobe.exe') -version | Select-Object -First 1
-          if ($LASTEXITCODE -ne 0) { throw 'ffprobe is not usable' }
+          foreach ($tool in 'ffmpeg', 'ffprobe') {
+            # Collect all output first: stopping the pipeline early (Select-Object -First)
+            # terminates the process and makes $LASTEXITCODE non-zero.
+            $output = & (Join-Path $bin "$tool.exe") -version
+            if ($LASTEXITCODE -ne 0) { throw "$tool is not usable" }
+            $output[0]
+          }
           Add-Content -LiteralPath $env:GITHUB_PATH -Value $bin
       - run: python scripts/create_demo.py
       - run: python -m pytest -q
